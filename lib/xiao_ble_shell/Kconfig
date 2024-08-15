@@ -1,0 +1,44 @@
+# Copyright (c) 2021, Legrand North America, LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+config XIAO_BLE_SHELL
+	bool "Support for Xiao BLE Shell library"
+	help
+	  This option enables the Xiao BLE Shell library
+
+if XIAO_BLE_SHELL
+
+config PRINTK
+	default y
+
+config SHELL
+	default y
+
+config SHELL_STACK_SIZE
+	default 1024
+
+config SHELL_BACKEND_SERIAL
+	default y
+
+config THREAD_MONITOR
+	default y
+
+config INIT_STACKS
+	default y
+
+config LOG_CMDS
+	default y
+
+config THREAD_NAME
+	default y
+
+config THREAD_MONITOR
+	default y
+
+config THREAD_STACK_INFO
+	default y
+
+config KERNEL_SHELL
+	default y
+
+endif # XIAO_BLE_SHELL
