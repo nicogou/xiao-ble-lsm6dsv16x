@@ -1,0 +1,27 @@
+/delete-node/ &storage_partition;
+
+&p25q16h {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		storage_partition: partition@0 {
+			label = "storage";
+			reg = <0x00000000 0x00200000>;
+		};
+	};
+};
+
+/ {
+   chosen {
+	   nordic,pm-ext-flash = &p25q16h;
+   };
+
+	msc_disk0 {
+		compatible = "zephyr,flash-disk";
+		partition = <&storage_partition>;
+		disk-name = "NAND";
+		cache-size = <4096>;
+	};
+};
