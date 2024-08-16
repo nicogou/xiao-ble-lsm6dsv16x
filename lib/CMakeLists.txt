@@ -2,3 +2,4 @@
 
 add_subdirectory_ifdef(CONFIG_CUSTOM custom)
 add_subdirectory_ifdef(CONFIG_XIAO_BLE_SHELL xiao_ble_shell)
+add_subdirectory_ifdef(CONFIG_XIAO_BLE_USB_MASS_STORAGE xiao_ble_usb_mass_storage)

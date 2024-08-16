@@ -1,0 +1,69 @@
+# Copyright (c) 2021, Legrand North America, LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+module = XIAO_BLE_USB_MASS_STORAGE
+module-str = XIAO_BLE_USB_MASS_STORAGE
+source "subsys/logging/Kconfig.template.log_config"
+
+config XIAO_BLE_USB_MASS_STORAGE
+	bool "Support for Xiao BLE USB Mass Storage library"
+	help
+	  This option enables the Xiao BLE USB Mass Storage library
+
+if XIAO_BLE_USB_MASS_STORAGE
+
+config USB_DEVICE_STACK
+	default y
+
+config USB_DEVICE_PRODUCT
+	default "Xiao BLE USB Mass Storage"
+
+config USB_DEVICE_PID
+	default 0x0008
+
+config USB_MASS_STORAGE
+	default y
+
+config USB_DEVICE_INITIALIZE_AT_BOOT
+	default n
+
+config DISK_DRIVER_FLASH
+	default y
+
+config FILE_SYSTEM
+	default y
+
+config FAT_FILESYSTEM_ELM
+	default y
+
+config FLASH_MAP
+	default y
+
+config FLASH_PAGE_LAYOUT
+	default y
+
+config MASS_STORAGE_DISK_NAME
+	default "NAND"
+
+config NORDIC_QSPI_NOR
+	default y
+
+config NORDIC_QSPI_NOR_FLASH_LAYOUT_PAGE_SIZE
+	default 4096
+
+config USB_DRIVER_LOG_LEVEL
+	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
+
+config USB_DEVICE_LOG_LEVEL
+	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
+
+config USB_MASS_STORAGE_LOG_LEVEL
+	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
+
+config FLASH_LOG_LEVEL
+	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
+
+config USB_DRIVER_LOG_LEVEL
+	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
+
+endif # XIAO_BLE_SHELL
