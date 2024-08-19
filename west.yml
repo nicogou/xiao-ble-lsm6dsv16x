@@ -8,10 +8,16 @@ manifest:
   remotes:
     - name: ncs
       url-base: https://github.com/nrfconnect
+    - name: st-lsm6dsv16x
+      url-base: https://github.com/STMicroelectronics
 
   projects:
     - name: nrf
       remote: ncs
       repo-path: sdk-nrf
-      revision: main
+      revision: v2.7.0
       import: true
+    - name: lsm6dsv16x-pid
+      remote: st-lsm6dsv16x
+      revision: main
+      path: xiao-ble-lsm6dsv16x.git/lib/lsm6dsv16x/lsm6dsv16x-pid

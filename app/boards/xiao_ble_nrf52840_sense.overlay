@@ -24,4 +24,18 @@
 		disk-name = "NAND";
 		cache-size = <4096>;
 	};
+
+	aliases {
+		imu = &lsm6dsv16x;
+	};
+};
+
+&xiao_spi {
+	cs-gpios = <&xiao_d 3 GPIO_ACTIVE_LOW>;
+	clock-frequency = <DT_FREQ_M(24)>;
+	lsm6dsv16x: lsm6dsv16x@0 {
+		compatible = "spi-device";
+		spi-max-frequency = < DT_FREQ_M(10) >;
+		reg = <0>;
+	};
 };

@@ -1,0 +1,18 @@
+config LSM6DSV16X
+	bool "Support for LSM6DSV16X sensor library"
+	help
+	  This option enables the LSM6DSV16X library.
+
+if LSM6DSV16X
+
+config SPI
+	default y
+
+config GPIO
+	default y
+
+endif # LSM6DSV16X
+
+module = LSM6DSV16X
+module-str = LSM6DSV16X
+source "subsys/logging/Kconfig.template.log_config"

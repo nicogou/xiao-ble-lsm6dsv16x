@@ -11,6 +11,8 @@
 
 #include <app_version.h>
 
+#include <app/lib/lsm6dsv16x.h>
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 int main(void)
@@ -18,6 +20,8 @@ int main(void)
 	int ret;
 
 	LOG_INF("Zephyr Example Application %s", APP_VERSION_STRING);
+
+	lsm6dsv16x_init();
 
 #if CONFIG_USB_MASS_STORAGE
 	ret = usb_mass_storage_init();

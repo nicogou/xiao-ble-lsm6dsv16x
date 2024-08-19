@@ -2,3 +2,4 @@
 
 add_subdirectory_ifdef(CONFIG_CUSTOM custom)
 add_subdirectory_ifdef(CONFIG_XIAO_BLE_SHELL xiao_ble_shell)
+add_subdirectory_ifdef(CONFIG_LSM6DSV16X lsm6dsv16x)
