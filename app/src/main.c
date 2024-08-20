@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <app/lib/xiao_ble_usb_mass_storage.h>
+#include <usb_mass_storage/usb_mass_storage.h>
 
 #include <app_version.h>
 

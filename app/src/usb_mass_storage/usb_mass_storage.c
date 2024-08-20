@@ -1,4 +1,4 @@
-#include "app/lib/xiao_ble_usb_mass_storage.h"
+#include "usb_mass_storage.h"
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/usb/usb_device.h>
@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <ff.h>
 
-LOG_MODULE_REGISTER(mass_storage, CONFIG_XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL);
+LOG_MODULE_REGISTER(mass_storage, CONFIG_APP_LOG_LEVEL);
 
 static struct fs_mount_t fs_mnt;
 
@@ -130,7 +130,7 @@ int xiao_ble_usb_mass_storage_init() {
 
 	setup_disk();
 
-	ret = usb_enable(NULL);
+	int ret = usb_enable(NULL);
 
 	if (ret != 0) {
 		LOG_ERR("Failed to enable USB");

@@ -1,10 +1,3 @@
-# Copyright (c) 2021, Legrand North America, LLC.
-# SPDX-License-Identifier: Apache-2.0
-
-module = XIAO_BLE_USB_MASS_STORAGE
-module-str = XIAO_BLE_USB_MASS_STORAGE
-source "subsys/logging/Kconfig.template.log_config"
-
 config XIAO_BLE_USB_MASS_STORAGE
 	bool "Support for Xiao BLE USB Mass Storage library"
 	help
@@ -50,20 +43,5 @@ config NORDIC_QSPI_NOR
 
 config NORDIC_QSPI_NOR_FLASH_LAYOUT_PAGE_SIZE
 	default 4096
-
-config USB_DRIVER_LOG_LEVEL
-	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
-
-config USB_DEVICE_LOG_LEVEL
-	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
-
-config USB_MASS_STORAGE_LOG_LEVEL
-	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
-
-config FLASH_LOG_LEVEL
-	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
-
-config USB_DRIVER_LOG_LEVEL
-	default XIAO_BLE_USB_MASS_STORAGE_LOG_LEVEL
 
 endif # XIAO_BLE_SHELL

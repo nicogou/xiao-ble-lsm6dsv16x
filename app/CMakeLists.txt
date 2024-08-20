@@ -9,4 +9,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(app LANGUAGES C)
 
+target_include_directories(app PRIVATE src)
+
+add_subdirectory(src/usb_mass_storage)
+
 target_sources(app PRIVATE src/main.c)

@@ -5,6 +5,5 @@ menu "Custom libraries"
 
 rsource "custom/Kconfig"
 rsource "xiao_ble_shell/Kconfig"
-rsource "xiao_ble_usb_mass_storage/Kconfig"
 
 endmenu
