@@ -1,3 +1,5 @@
+#pragma once
+
 #include <zephyr/drivers/spi.h>
 
 #define BOOT_TIME 10 //ms

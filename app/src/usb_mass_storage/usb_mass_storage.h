@@ -1,3 +1,5 @@
+#pragma once
+
 #include <zephyr/storage/flash_map.h>
 
 #define STORAGE_PARTITION		storage_partition
