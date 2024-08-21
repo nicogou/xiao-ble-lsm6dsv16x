@@ -12,3 +12,5 @@ int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp,
                              uint16_t len);
 void platform_delay(uint32_t ms);
 void platform_init(void *handle);
+
+int8_t attach_interrupt(const struct gpio_dt_spec gpio, gpio_flags_t input, gpio_flags_t edge, struct gpio_callback *callback, gpio_callback_handler_t handler);
