@@ -25,8 +25,24 @@
 		cache-size = <4096>;
 	};
 
+	gpin {
+		compatible = "gpio-keys";
+
+		imu_int1: imu_int1 {
+			label = "IMU interrupt 1 pin";
+			gpios = <&xiao_d 0 GPIO_ACTIVE_LOW>;
+		};
+
+		imu_int2: imu_int2 {
+			label = "IMU interrupt 2 pin";
+			gpios = <&xiao_d 1 GPIO_ACTIVE_LOW>;
+		};
+	};
+
 	aliases {
 		imu = &lsm6dsv16x;
+		imuint1 = &imu_int1;
+		imuint2 = &imu_int2;
 	};
 };
 
