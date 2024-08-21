@@ -130,11 +130,11 @@ int usb_mass_storage_init() {
 
 	setup_disk();
 
-#ifndef CONFIG_USB_INITIALIZE_AT_BOOT
+#if CONFIG_USB_DEVICE_INITIALIZE_AT_BOOT == 0
 	int ret = usb_enable(NULL);
 
 	if (ret != 0) {
-		LOG_ERR("Failed to enable USB");
+		LOG_ERR("Failed to enable USB (%i)", ret);
 		return -EIO;
 	}
 #endif
