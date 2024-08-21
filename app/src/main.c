@@ -33,5 +33,12 @@ int main(void)
 
 	LOG_INF("The device is put in USB mass storage mode.");
 #endif
+
+	while (true)
+	{
+		lsm6dsv16x_poll();
+		k_msleep(1);
+	}
+
 	return 0;
 }
