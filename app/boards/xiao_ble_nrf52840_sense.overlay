@@ -35,7 +35,7 @@
 
 		imu_int2: imu_int2 {
 			label = "IMU interrupt 2 pin";
-			gpios = <&xiao_d 1 GPIO_ACTIVE_LOW>;
+			gpios = <&xiao_d 1 GPIO_ACTIVE_HIGH>;
 		};
 	};
 

@@ -15,6 +15,8 @@ static double_t acceleration_mg[3];
 
 static uint8_t drdy_event = 0;
 
+static struct k_work imu_work;
+
 void lsm6dsv16x_read_data_irq_handler(void)
 {
 	drdy_event = 1;
@@ -28,7 +30,7 @@ static struct gpio_callback imu_int_1_cb_data;
 
 void imu_int_1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-	lsm6dsv16x_read_data_irq_handler();
+	k_work_submit(&imu_work);
     return;
 }
 
@@ -38,6 +40,8 @@ void lsm6dsv16x_init()
 	if (res != 0) {
 		LOG_ERR("Error while attaching interrupt %i", res);
 	}
+
+	k_work_init(&imu_work, lsm6dsv16x_irq);
 
 	lsm6dsv16x_pin_int_route_t pin_int;
 	lsm6dsv16x_reset_t rst;
@@ -62,7 +66,6 @@ void lsm6dsv16x_init()
 
 	 /* Restore default configuration */
   	lsm6dsv16x_reset_set(&dev_ctx, LSM6DSV16X_RESTORE_CTRL_REGS);
-	LOG_WRN("lsm6dsv16x_reset_set %i", res);
 	do {
 		lsm6dsv16x_reset_get(&dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
@@ -70,7 +73,7 @@ void lsm6dsv16x_init()
 	/* Enable Block Data Update */
 	lsm6dsv16x_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
 
-	// dummy read
+	/* dummy read, needed to enable interrupts */
 	lsm6dsv16x_acceleration_raw_get(&dev_ctx, data_raw_acceleration);
 
 	pin_int.drdy_xl = PROPERTY_ENABLE;
@@ -94,28 +97,23 @@ void lsm6dsv16x_init()
 	lsm6dsv16x_filt_xl_lp2_bandwidth_set(&dev_ctx, LSM6DSV16X_XL_STRONG);
 }
 
-void lsm6dsv16x_irq() {
-	int res;
-	if (drdy_event) {
-		lsm6dsv16x_data_ready_t drdy;
+void lsm6dsv16x_irq(struct k_work *item) {
+	lsm6dsv16x_data_ready_t drdy;
 
-		drdy_event = 0;
+	/* Read output only if new xl value is available */
+	lsm6dsv16x_flag_data_ready_get(&dev_ctx, &drdy);
 
-		/* Read output only if new xl value is available */
-		lsm6dsv16x_flag_data_ready_get(&dev_ctx, &drdy);
-
-		if (drdy.drdy_xl) {
-			/* Read acceleration field data */
-			memset(data_raw_acceleration, 0x00, 3 * sizeof(int16_t));
-			lsm6dsv16x_acceleration_raw_get(&dev_ctx, data_raw_acceleration);
-			acceleration_mg[0] =
-			lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[0]);
-			acceleration_mg[1] =
-			lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[1]);
-			acceleration_mg[2] =
-			lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[2]);
-			LOG_DBG("Acceleration [mg]:%4.2f\t%4.2f\t%4.2f",
-					acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
-		}
+	if (drdy.drdy_xl) {
+		/* Read acceleration field data */
+		memset(data_raw_acceleration, 0x00, 3 * sizeof(int16_t));
+		lsm6dsv16x_acceleration_raw_get(&dev_ctx, data_raw_acceleration);
+		acceleration_mg[0] =
+		lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[0]);
+		acceleration_mg[1] =
+		lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[1]);
+		acceleration_mg[2] =
+		lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[2]);
+		LOG_DBG("Acceleration [mg]:%4.2f\t%4.2f\t%4.2f",
+				acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
 	}
 }
