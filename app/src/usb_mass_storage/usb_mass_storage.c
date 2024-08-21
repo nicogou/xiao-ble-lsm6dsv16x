@@ -22,14 +22,16 @@ static int setup_flash(struct fs_mount_t *mnt)
 	id = STORAGE_PARTITION_ID;
 
 	rc = flash_area_open(id, &pfa);
-	printk("Area %u at 0x%x on %s for %u bytes\n",
+	LOG_DBG("Area %u at 0x%x on %s for %u bytes",
 	       id, (unsigned int)pfa->fa_off, pfa->fa_dev->name,
 	       (unsigned int)pfa->fa_size);
 
 	if (rc < 0 && IS_ENABLED(CONFIG_APP_WIPE_STORAGE)) {
-		printk("Erasing flash area ... ");
+		LOG_INF("Erasing flash area ... ");
 		rc = flash_area_erase(pfa, 0, pfa->fa_size);
-		printk("%d\n", rc);
+		if (rc != 0) {
+			LOG_ERR("Failed to erase falsh area (%i)", rc);
+		}
 	}
 
 	if (rc < 0) {
@@ -82,22 +84,22 @@ static void setup_disk(void)
 	/* Allow log messages to flush to avoid interleaved output */
 	k_sleep(K_MSEC(50));
 
-	printk("Mount %s: %d\n", fs_mnt.mnt_point, rc);
+	LOG_DBG("Mount %s: %d", fs_mnt.mnt_point, rc);
 
 	rc = fs_statvfs(mp->mnt_point, &sbuf);
 	if (rc < 0) {
-		printk("FAIL: statvfs: %d\n", rc);
+		LOG_ERR("FAIL: statvfs: %d", rc);
 		return;
 	}
 
-	printk("%s: bsize = %lu ; frsize = %lu ;"
-	       " blocks = %lu ; bfree = %lu\n",
+	LOG_DBG("%s: bsize = %lu ; frsize = %lu ;"
+	       " blocks = %lu ; bfree = %lu",
 	       mp->mnt_point,
 	       sbuf.f_bsize, sbuf.f_frsize,
 	       sbuf.f_blocks, sbuf.f_bfree);
 
 	rc = fs_opendir(&dir, mp->mnt_point);
-	printk("%s opendir: %d\n", mp->mnt_point, rc);
+	LOG_DBG("%s opendir: %d", mp->mnt_point, rc);
 
 	if (rc < 0) {
 		LOG_ERR("Failed to open directory");
@@ -112,10 +114,10 @@ static void setup_disk(void)
 			break;
 		}
 		if (ent.name[0] == 0) {
-			printk("End of files\n");
+			LOG_DBG("End of files");
 			break;
 		}
-		printk("  %c %u %s\n",
+		LOG_DBG("  %c %u %s",
 		       (ent.type == FS_DIR_ENTRY_FILE) ? 'F' : 'D',
 		       ent.size,
 		       ent.name);

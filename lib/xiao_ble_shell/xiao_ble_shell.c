@@ -67,3 +67,16 @@ static int cmd_uf2(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_CMD_REGISTER(uf2, NULL, "Switch Xiao BLE to UF2 bootloader mode.", cmd_uf2);
+
+static int cmd_reset(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_print(sh, "Resetting Xiao BLE...");
+	NVIC_SystemReset();
+
+	return 0;
+}
+
+SHELL_CMD_REGISTER(reset, NULL, "Reset Xiao BLE.", cmd_reset);

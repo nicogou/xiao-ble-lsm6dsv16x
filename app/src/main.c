@@ -11,14 +11,13 @@
 
 #include <app_version.h>
 
-
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 int main(void)
 {
 	int ret;
 
-	printk("Zephyr Example Application %s\n", APP_VERSION_STRING);
+	LOG_INF("Zephyr Example Application %s", APP_VERSION_STRING);
 
 #if CONFIG_USB_MASS_STORAGE
 	ret = usb_mass_storage_init();
@@ -28,7 +27,7 @@ int main(void)
 		return 0;
 	}
 
-	LOG_INF("The device is put in USB mass storage mode.\n");
+	LOG_INF("The device is put in USB mass storage mode.");
 #endif
 	return 0;
 }
