@@ -126,16 +126,18 @@ static void setup_disk(void)
 	return;
 }
 
-int xiao_ble_usb_mass_storage_init() {
+int usb_mass_storage_init() {
 
 	setup_disk();
 
+#ifndef CONFIG_USB_INITIALIZE_AT_BOOT
 	int ret = usb_enable(NULL);
 
 	if (ret != 0) {
 		LOG_ERR("Failed to enable USB");
 		return -EIO;
 	}
+#endif
 
 	return 0;
 }

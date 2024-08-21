@@ -13,5 +13,3 @@ endmenu
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
-
-rsource "Kconfig.usb_mass_storage"

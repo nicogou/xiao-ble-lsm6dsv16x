@@ -5,7 +5,9 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#if CONFIG_USB_MASS_STORAGE
 #include <usb_mass_storage/usb_mass_storage.h>
+#endif
 
 #include <app_version.h>
 
@@ -18,7 +20,8 @@ int main(void)
 
 	printk("Zephyr Example Application %s\n", APP_VERSION_STRING);
 
-	ret = xiao_ble_usb_mass_storage_init();
+#if CONFIG_USB_MASS_STORAGE
+	ret = usb_mass_storage_init();
 
 	if (ret) {
 		LOG_ERR("The device could not be put in USB mass storage mode.");
@@ -26,5 +29,6 @@ int main(void)
 	}
 
 	LOG_INF("The device is put in USB mass storage mode.\n");
+#endif
 	return 0;
 }
