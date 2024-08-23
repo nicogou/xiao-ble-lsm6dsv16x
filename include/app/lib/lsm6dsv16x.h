@@ -6,3 +6,5 @@
 
 void lsm6dsv16x_init();
 void lsm6dsv16x_irq(struct k_work *item);
+int lsm6dsv16x_start_acquisition();
+int lsm6dsv16x_stop_acquisition();

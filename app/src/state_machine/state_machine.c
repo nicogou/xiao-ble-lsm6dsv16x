@@ -2,6 +2,8 @@
 #include <zephyr/smf.h>
 #include <zephyr/logging/log.h>
 
+#include <app/lib/lsm6dsv16x.h>
+
 LOG_MODULE_REGISTER(state_machine, CONFIG_APP_LOG_LEVEL);
 
 /* User defined object */
@@ -44,6 +46,7 @@ static void recording_entry(void *o)
 {
     LOG_INF("Entering RECORDING state.");
     current_state = RECORDING;
+    lsm6dsv16x_start_acquisition();
 }
 
 static void recording_run(void *o)
@@ -58,6 +61,11 @@ static void recording_run(void *o)
     }
 }
 
+static void recording_exit(void *o)
+{
+    lsm6dsv16x_stop_acquisition();
+}
+
 xiao_state_t state_machine_current_state(void) {
     return current_state;
 }
@@ -65,7 +73,7 @@ xiao_state_t state_machine_current_state(void) {
 /* Populate state table */
 static const struct smf_state xiao_states[] = {
     [IDLE] = SMF_CREATE_STATE(idle_entry, idle_run, NULL, NULL, NULL),
-    [RECORDING] = SMF_CREATE_STATE(recording_entry, recording_run, NULL, NULL, NULL),
+    [RECORDING] = SMF_CREATE_STATE(recording_entry, recording_run, recording_exit, NULL, NULL),
 };
 
 int state_machine_post_event(xiao_event_t event)
