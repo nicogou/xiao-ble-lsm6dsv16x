@@ -12,5 +12,6 @@ project(app LANGUAGES C)
 target_include_directories(app PRIVATE src)
 
 add_subdirectory_ifdef(CONFIG_USB_MASS_STORAGE src/usb_mass_storage)
+add_subdirectory(src/state_machine)
 
 target_sources(app PRIVATE src/main.c)

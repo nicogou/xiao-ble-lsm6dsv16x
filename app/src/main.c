@@ -8,6 +8,7 @@
 #if CONFIG_USB_MASS_STORAGE
 #include <usb_mass_storage/usb_mass_storage.h>
 #endif
+#include <state_machine/state_machine.h>
 
 #include <app_version.h>
 
@@ -33,5 +34,8 @@ int main(void)
 
 	LOG_INF("The device is put in USB mass storage mode.");
 #endif
-	return 0;
+
+	state_machine_init();
+
+	return state_machine_run();
 }
