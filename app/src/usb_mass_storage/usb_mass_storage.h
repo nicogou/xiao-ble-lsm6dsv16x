@@ -5,3 +5,4 @@
 
 int usb_mass_storage_init();
 int usb_mass_storage_lsdir(const char *path);
+int usb_mass_storage_create_file(const char *path, const char *filename);
