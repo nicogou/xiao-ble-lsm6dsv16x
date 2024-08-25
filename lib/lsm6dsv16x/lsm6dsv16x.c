@@ -36,14 +36,16 @@ int lsm6dsv16x_start_acquisition()
 	lsm6dsv16x_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
 	/* Set full scale */
 	lsm6dsv16x_xl_full_scale_set(&dev_ctx, LSM6DSV16X_2g);
+	lsm6dsv16x_gy_full_scale_set(&dev_ctx, LSM6DSV16X_2000dps);
 
 	/*
 	* Set FIFO watermark (number of unread sensor data TAG + 6 bytes
 	* stored in FIFO) to FIFO_WATERMARK samples
 	*/
 	lsm6dsv16x_fifo_watermark_set(&dev_ctx, FIFO_WATERMARK);
-	/* Set FIFO batch XL/Gyro ODR to 12.5Hz */
+	/* Set FIFO batch XL/Gyro ODR to 60Hz */
 	lsm6dsv16x_fifo_xl_batch_set(&dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
+	lsm6dsv16x_fifo_gy_batch_set(&dev_ctx, LSM6DSV16X_GY_BATCHED_AT_60Hz);
 	/* Set FIFO mode to Stream mode (aka Continuous Mode) */
 	lsm6dsv16x_fifo_mode_set(&dev_ctx, LSM6DSV16X_STREAM_MODE);
 
@@ -53,6 +55,7 @@ int lsm6dsv16x_start_acquisition()
 
 	/* Set Output Data Rate */
 	lsm6dsv16x_xl_data_rate_set(&dev_ctx, LSM6DSV16X_ODR_AT_60Hz);
+	lsm6dsv16x_gy_data_rate_set(&dev_ctx, LSM6DSV16X_ODR_AT_60Hz);
 	lsm6dsv16x_fifo_timestamp_batch_set(&dev_ctx, LSM6DSV16X_TMSTMP_DEC_8);
 	lsm6dsv16x_timestamp_set(&dev_ctx, PROPERTY_ENABLE);
 
@@ -134,6 +137,13 @@ void lsm6dsv16x_irq(struct k_work *item) {
 					(float) lsm6dsv16x_from_fs2_to_mg(*datax),
 					(float) lsm6dsv16x_from_fs2_to_mg(*datay),
 					(float) lsm6dsv16x_from_fs2_to_mg(*dataz));
+				break;
+
+			case LSM6DSV16X_GY_NC_TAG:
+				LOG_DBG("GYR [mdps]:\t%4.2f\t%4.2f\t%4.2f",
+						lsm6dsv16x_from_fs2000_to_mdps(*datax),
+						lsm6dsv16x_from_fs2000_to_mdps(*datay),
+						lsm6dsv16x_from_fs2000_to_mdps(*dataz));
 				break;
 
 			case LSM6DSV16X_TIMESTAMP_TAG:
