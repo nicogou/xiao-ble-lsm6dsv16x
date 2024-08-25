@@ -137,16 +137,16 @@ void lsm6dsv16x_irq(struct k_work *item) {
         switch (f_data.tag) {
 			case LSM6DSV16X_XL_NC_TAG:
 				LOG_DBG("ACC [mg]:\t%4.2f\t%4.2f\t%4.2f",
-					(float) lsm6dsv16x_from_fs2_to_mg(*datax),
-					(float) lsm6dsv16x_from_fs2_to_mg(*datay),
-					(float) lsm6dsv16x_from_fs2_to_mg(*dataz));
+					(double) lsm6dsv16x_from_fs2_to_mg(*datax),
+					(double) lsm6dsv16x_from_fs2_to_mg(*datay),
+					(double) lsm6dsv16x_from_fs2_to_mg(*dataz));
 				break;
 
 			case LSM6DSV16X_GY_NC_TAG:
 				LOG_DBG("GYR [mdps]:\t%4.2f\t%4.2f\t%4.2f",
-						lsm6dsv16x_from_fs2000_to_mdps(*datax),
-						lsm6dsv16x_from_fs2000_to_mdps(*datay),
-						lsm6dsv16x_from_fs2000_to_mdps(*dataz));
+						(double) lsm6dsv16x_from_fs2000_to_mdps(*datax),
+						(double) lsm6dsv16x_from_fs2000_to_mdps(*datay),
+						(double) lsm6dsv16x_from_fs2000_to_mdps(*dataz));
 				break;
 
 			case LSM6DSV16X_TIMESTAMP_TAG:
