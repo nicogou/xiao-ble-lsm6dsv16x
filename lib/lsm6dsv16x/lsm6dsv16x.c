@@ -75,7 +75,7 @@ int lsm6dsv16x_stop_acquisition()
 
 void lsm6dsv16x_init(void (*fifo_cb)())
 {
-	sensor.lsm6dsv16x_fifo_cb = fifo_cb;
+	sensor.lsm6dsv16x_fifo_cb = fifo_cb ? fifo_cb : NULL;
 
 	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
 	if (res != 0) {
@@ -119,7 +119,9 @@ void lsm6dsv16x_irq(struct k_work *item) {
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
 
-	(*sensor.lsm6dsv16x_fifo_cb)();
+	if (sensor.lsm6dsv16x_fifo_cb) {
+		(*sensor.lsm6dsv16x_fifo_cb)();
+	}
 
 	num = fifo_status.fifo_level;
 
