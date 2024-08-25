@@ -9,9 +9,10 @@ LOG_MODULE_REGISTER(lsm6dsv16x, CONFIG_LSM6DSV16X_LOG_LEVEL);
 static stmdev_ctx_t dev_ctx;
 static uint8_t whoamI;
 
-static lsm6dsv16x_filt_settling_mask_t filt_settling_mask;
-static int16_t data_raw_acceleration[3];
-static double_t acceleration_mg[3];
+static int16_t *datax;
+static int16_t *datay;
+static int16_t *dataz;
+static int32_t *ts;
 
 static struct k_work imu_work;
 
@@ -33,29 +34,27 @@ int lsm6dsv16x_start_acquisition()
 
 	/* Enable Block Data Update */
 	lsm6dsv16x_block_data_update_set(&dev_ctx, PROPERTY_ENABLE);
-
-	/* dummy read, needed to enable interrupts */
-	lsm6dsv16x_acceleration_raw_get(&dev_ctx, data_raw_acceleration);
-
-	pin_int.drdy_xl = PROPERTY_ENABLE;
-	pin_int.drdy_temp = PROPERTY_DISABLE;
-	lsm6dsv16x_pin_int1_route_set(&dev_ctx, &pin_int);
-
-	/* Set Output Data Rate.
-	* Selected data rate have to be equal or greater with respect
-	* with MLC data rate.
-	*/
-	lsm6dsv16x_xl_data_rate_set(&dev_ctx, LSM6DSV16X_ODR_AT_120Hz);
 	/* Set full scale */
 	lsm6dsv16x_xl_full_scale_set(&dev_ctx, LSM6DSV16X_2g);
 
-	/* Configure filtering chain */
-	filt_settling_mask.drdy = PROPERTY_ENABLE;
-	filt_settling_mask.irq_xl = PROPERTY_ENABLE;
-	filt_settling_mask.irq_g = PROPERTY_ENABLE;
-	lsm6dsv16x_filt_settling_mask_set(&dev_ctx, filt_settling_mask);
-	lsm6dsv16x_filt_xl_lp2_set(&dev_ctx, PROPERTY_ENABLE);
-	lsm6dsv16x_filt_xl_lp2_bandwidth_set(&dev_ctx, LSM6DSV16X_XL_STRONG);
+	/*
+	* Set FIFO watermark (number of unread sensor data TAG + 6 bytes
+	* stored in FIFO) to FIFO_WATERMARK samples
+	*/
+	lsm6dsv16x_fifo_watermark_set(&dev_ctx, FIFO_WATERMARK);
+	/* Set FIFO batch XL/Gyro ODR to 12.5Hz */
+	lsm6dsv16x_fifo_xl_batch_set(&dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
+	/* Set FIFO mode to Stream mode (aka Continuous Mode) */
+	lsm6dsv16x_fifo_mode_set(&dev_ctx, LSM6DSV16X_STREAM_MODE);
+
+	pin_int.fifo_th = PROPERTY_ENABLE;
+	lsm6dsv16x_pin_int1_route_set(&dev_ctx, &pin_int);
+	//lsm6dsv16x_pin_int2_route_set(&dev_ctx, &pin_int);
+
+	/* Set Output Data Rate */
+	lsm6dsv16x_xl_data_rate_set(&dev_ctx, LSM6DSV16X_ODR_AT_60Hz);
+	lsm6dsv16x_fifo_timestamp_batch_set(&dev_ctx, LSM6DSV16X_TMSTMP_DEC_8);
+	lsm6dsv16x_timestamp_set(&dev_ctx, PROPERTY_ENABLE);
 
 	return 0;
 }
@@ -109,22 +108,41 @@ void lsm6dsv16x_init()
 }
 
 void lsm6dsv16x_irq(struct k_work *item) {
-	lsm6dsv16x_data_ready_t drdy;
 
-	/* Read output only if new xl value is available */
-	lsm6dsv16x_flag_data_ready_get(&dev_ctx, &drdy);
+	uint16_t num = 0;
+    lsm6dsv16x_fifo_status_t fifo_status;
 
-	if (drdy.drdy_xl) {
-		/* Read acceleration field data */
-		memset(data_raw_acceleration, 0x00, 3 * sizeof(int16_t));
-		lsm6dsv16x_acceleration_raw_get(&dev_ctx, data_raw_acceleration);
-		acceleration_mg[0] =
-		lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[0]);
-		acceleration_mg[1] =
-		lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[1]);
-		acceleration_mg[2] =
-		lsm6dsv16x_from_fs2_to_mg(data_raw_acceleration[2]);
-		LOG_DBG("Acceleration [mg]:%4.2f\t%4.2f\t%4.2f",
-				acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
-	}
+	/* Read watermark flag */
+	lsm6dsv16x_fifo_status_get(&dev_ctx, &fifo_status);
+
+	num = fifo_status.fifo_level;
+
+	LOG_DBG("-- FIFO num %d", num);
+	while (num--) {
+        lsm6dsv16x_fifo_out_raw_t f_data;
+
+        /* Read FIFO sensor value */
+        lsm6dsv16x_fifo_out_raw_get(&dev_ctx, &f_data);
+        datax = (int16_t *)&f_data.data[0];
+        datay = (int16_t *)&f_data.data[2];
+        dataz = (int16_t *)&f_data.data[4];
+        ts = (int32_t *)&f_data.data[0];
+
+        switch (f_data.tag) {
+			case LSM6DSV16X_XL_NC_TAG:
+				LOG_DBG("ACC [mg]:\t%4.2f\t%4.2f\t%4.2f",
+					(float) lsm6dsv16x_from_fs2_to_mg(*datax),
+					(float) lsm6dsv16x_from_fs2_to_mg(*datay),
+					(float) lsm6dsv16x_from_fs2_to_mg(*dataz));
+				break;
+
+			case LSM6DSV16X_TIMESTAMP_TAG:
+				LOG_DBG("TIMESTAMP [ms] %d", *ts);
+				break;
+
+			default:
+				break;
+        }
+    }
+	LOG_DBG("------\n");
 }
