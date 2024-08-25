@@ -16,13 +16,17 @@
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
+static void test_cb(){
+	LOG_DBG("This is a call to the callback function");
+}
+
 int main(void)
 {
 	int ret;
 
 	LOG_INF("Zephyr Example Application %s", APP_VERSION_STRING);
 
-	lsm6dsv16x_init();
+	lsm6dsv16x_init(&test_cb);
 
 #if CONFIG_USB_MASS_STORAGE
 	ret = usb_mass_storage_init();
