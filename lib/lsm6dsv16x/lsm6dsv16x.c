@@ -55,7 +55,7 @@ int lsm6dsv16x_start_acquisition()
 	/* Set Output Data Rate */
 	lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_60Hz);
 	lsm6dsv16x_gy_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_60Hz);
-	lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_8);
+	lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_1);
 	lsm6dsv16x_timestamp_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 
 	return 0;
@@ -73,9 +73,9 @@ int lsm6dsv16x_stop_acquisition()
 	return 0;
 }
 
-void lsm6dsv16x_init(void (*fifo_cb)())
+void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 {
-	sensor.lsm6dsv16x_fifo_cb = fifo_cb ? fifo_cb : NULL;
+	sensor.callbacks = cb;
 
 	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
 	if (res != 0) {
@@ -118,14 +118,9 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
-
-	if (sensor.lsm6dsv16x_fifo_cb) {
-		(*sensor.lsm6dsv16x_fifo_cb)();
-	}
-
 	num = fifo_status.fifo_level;
 
-	LOG_DBG("-- FIFO num %d", num);
+	LOG_DBG("Received %d samples from FIFO.", num);
 	while (num--) {
         lsm6dsv16x_fifo_out_raw_t f_data;
 
@@ -138,26 +133,26 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
         switch (f_data.tag) {
 			case LSM6DSV16X_XL_NC_TAG:
-				LOG_DBG("ACC [mg]:\t%4.2f\t%4.2f\t%4.2f",
-					(double) lsm6dsv16x_from_fs2_to_mg(*datax),
-					(double) lsm6dsv16x_from_fs2_to_mg(*datay),
-					(double) lsm6dsv16x_from_fs2_to_mg(*dataz));
+				if (sensor.callbacks.lsm6dsv16x_acc_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_acc_sample_cb)(lsm6dsv16x_from_fs2_to_mg(*datax), lsm6dsv16x_from_fs2_to_mg(*datay), lsm6dsv16x_from_fs2_to_mg(*dataz));
+				}
 				break;
 
 			case LSM6DSV16X_GY_NC_TAG:
-				LOG_DBG("GYR [mdps]:\t%4.2f\t%4.2f\t%4.2f",
-						(double) lsm6dsv16x_from_fs2000_to_mdps(*datax),
-						(double) lsm6dsv16x_from_fs2000_to_mdps(*datay),
-						(double) lsm6dsv16x_from_fs2000_to_mdps(*dataz));
+				if (sensor.callbacks.lsm6dsv16x_gyro_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(lsm6dsv16x_from_fs2000_to_mdps(*datax), lsm6dsv16x_from_fs2000_to_mdps(*datay), lsm6dsv16x_from_fs2000_to_mdps(*dataz));
+				}
 				break;
 
 			case LSM6DSV16X_TIMESTAMP_TAG:
-				LOG_DBG("TIMESTAMP [ms] %d", *ts);
+				if (sensor.callbacks.lsm6dsv16x_ts_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_ts_sample_cb)(*ts);
+				}
 				break;
 
 			default:
+				LOG_WRN("Unhandled data received in FIFO");
 				break;
         }
     }
-	LOG_DBG("------\n");
 }

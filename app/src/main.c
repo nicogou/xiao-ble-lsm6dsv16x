@@ -16,8 +16,66 @@
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
-static void test_cb(){
-	LOG_DBG("This is a call to the callback function");
+struct line {
+	float_t acc_x;
+	float_t acc_y;
+	float_t acc_z;
+	bool acc_updated;
+	float_t gyro_x;
+	float_t gyro_y;
+	float_t gyro_z;
+	bool gyro_updated;
+	int32_t ts;
+	bool ts_updated;
+};
+
+static struct line l = {
+	.acc_updated = false,
+	.gyro_updated = false,
+	.ts_updated = false,
+};
+
+static void print_line_if_needed(){
+	char txt[100];
+	if (l.acc_updated && l.gyro_updated && l.ts_updated) {
+		sprintf(txt, "%i,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+		usb_mass_storage_write_to_current_session(txt, strlen(txt));
+
+		l.acc_updated = false;
+		l.gyro_updated = false;
+		l.ts_updated = false;
+	}
+}
+
+static void acc_received_cb(float_t x, float_t y, float_t z)
+{
+	l.acc_x = x;
+	l.acc_y = y;
+	l.acc_z = z;
+	l.acc_updated = true;
+
+	print_line_if_needed();
+	return;
+}
+
+static void gyro_received_cb(float_t x, float_t y, float_t z)
+{
+	l.gyro_x = x;
+	l.gyro_y = y;
+	l.gyro_z = z;
+	l.gyro_updated = true;
+
+	print_line_if_needed();
+	return;
+}
+
+static void ts_received_cb(int ts)
+{
+	l.ts = ts;
+	l.ts_updated = true;
+
+	print_line_if_needed();
+	return;
 }
 
 int main(void)
@@ -26,7 +84,13 @@ int main(void)
 
 	LOG_INF("Zephyr Example Application %s", APP_VERSION_STRING);
 
-	lsm6dsv16x_init(&test_cb);
+	lsm6dsv16x_cb_t callbacks = {
+		.lsm6dsv16x_ts_sample_cb = ts_received_cb,
+		.lsm6dsv16x_acc_sample_cb = acc_received_cb,
+		.lsm6dsv16x_gyro_sample_cb = gyro_received_cb
+	};
+
+	lsm6dsv16x_init(callbacks);
 
 #if CONFIG_USB_MASS_STORAGE
 	ret = usb_mass_storage_init();
