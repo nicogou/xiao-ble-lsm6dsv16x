@@ -58,11 +58,8 @@ static int mount_app_fs(struct fs_mount_t *mnt)
 static void setup_disk(void)
 {
 	struct fs_mount_t *mp = &fs_mnt;
-	struct fs_dir_t dir;
 	struct fs_statvfs sbuf;
 	int rc;
-
-	fs_dir_t_init(&dir);
 
 	rc = setup_flash(mp);
 	if (rc < 0) {
@@ -98,13 +95,44 @@ static void setup_disk(void)
 	       sbuf.f_bsize, sbuf.f_frsize,
 	       sbuf.f_blocks, sbuf.f_bfree);
 
-	rc = fs_opendir(&dir, mp->mnt_point);
-	LOG_DBG("%s opendir: %d", mp->mnt_point, rc);
+	return;
+}
 
-	if (rc < 0) {
-		LOG_ERR("Failed to open directory");
+/* List dir entry by path
+ *
+ * @param path Absolute path to list
+ *
+ * @return Negative errno code on error, number of listed entries on
+ *         success.
+ */
+int usb_mass_storage_lsdir(const char *path)
+{
+	struct fs_mount_t *mp = &fs_mnt;
+	int rc;
+	struct fs_dir_t dir;
+	int count = 0;
+
+	const char** tmp_path;
+	if (path == NULL) {
+		tmp_path = &mp->mnt_point;
+	} else {
+		if (memcmp(path, mp->mnt_point, strlen(mp->mnt_point))) {
+			LOG_ERR("Path %s is not in mount point %s", path, mp->mnt_point);
+			return -EINVAL;
+		}
+		tmp_path = &path;
 	}
 
+	fs_dir_t_init(&dir);
+
+	/* Verify fs_opendir() */
+	rc = fs_opendir(&dir, *tmp_path);
+	if (rc) {
+		LOG_ERR("Error opening dir %s [%d]", *tmp_path, rc);
+		return rc;
+	}
+
+	LOG_DBG("Listing dir %s ...", *tmp_path);
 	while (rc >= 0) {
 		struct fs_dirent ent = { 0 };
 
@@ -123,9 +151,51 @@ static void setup_disk(void)
 		       ent.name);
 	}
 
-	(void)fs_closedir(&dir);
+	/* Verify fs_closedir() */
+	fs_closedir(&dir);
+	if (rc == 0) {
+		rc = count;
+	}
 
-	return;
+	return rc;
+}
+
+int usb_mass_storage_create_file(const char *path, const char *filename){
+	char file_path[128];
+	uint8_t base = 0;
+	struct fs_mount_t *mp = &fs_mnt;
+	struct fs_file_t file;
+
+	if (path == NULL) {
+		memcpy(file_path, mp->mnt_point, strlen(mp->mnt_point));
+		base = strlen(mp->mnt_point);
+	} else {
+		memcpy(file_path, path, strlen(path));
+		if (path[strlen(path) - 1] == '/') {
+			file_path[strlen(path) - 1] = 0;
+		}
+		base = strlen(file_path);
+	}
+
+	file_path[base++] = '/';
+	file_path[base] = 0;
+
+	strcat(file_path, filename);
+	fs_file_t_init(&file);
+
+	int rc = fs_open(&file, file_path, FS_O_CREATE | FS_O_RDWR);
+	if (rc != 0) {
+		LOG_ERR("Failed to create file %s (%i)", file_path, rc);
+		return rc;
+	}
+
+	rc = fs_close(&file);
+	if (rc != 0) {
+		LOG_ERR("Failed to close file %s (%i)", file_path, rc);
+		return rc;
+	}
+
+	return 0;
 }
 
 int usb_mass_storage_init() {
