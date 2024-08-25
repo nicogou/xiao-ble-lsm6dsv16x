@@ -39,7 +39,12 @@ static void print_line_if_needed(){
 	char txt[100];
 	if (l.acc_updated && l.gyro_updated && l.ts_updated) {
 		sprintf(txt, "%i,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
-		usb_mass_storage_write_to_current_session(txt, strlen(txt));
+		int res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
+
+		if (res < 0) {
+			LOG_ERR("Unable to write to session file, ending session");
+			state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
+		}
 
 		l.acc_updated = false;
 		l.gyro_updated = false;

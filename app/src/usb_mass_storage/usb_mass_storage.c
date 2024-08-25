@@ -348,6 +348,12 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 		LOG_ERR("Failed to write data to current session file (%i)", res);
 		return res;
 	}
+	if (res < len)
+	{
+		LOG_WRN("The data has not been properly written to the session (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 
