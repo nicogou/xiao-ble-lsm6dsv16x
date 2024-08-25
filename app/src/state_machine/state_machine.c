@@ -3,6 +3,7 @@
 #include <zephyr/logging/log.h>
 
 #include <app/lib/lsm6dsv16x.h>
+#include <usb_mass_storage/usb_mass_storage.h>
 
 LOG_MODULE_REGISTER(state_machine, CONFIG_APP_LOG_LEVEL);
 
@@ -46,6 +47,10 @@ static void recording_entry(void *o)
 {
     LOG_INF("Entering RECORDING state.");
     current_state = RECORDING;
+	int res = usb_mass_storage_create_session();
+	if (res < 0) {
+		LOG_ERR("Unable to create session (%i)", res);
+	}
     lsm6dsv16x_start_acquisition();
 }
 
@@ -64,6 +69,10 @@ static void recording_run(void *o)
 static void recording_exit(void *o)
 {
     lsm6dsv16x_stop_acquisition();
+	int res = usb_mass_storage_end_current_session();
+	if (res) {
+		LOG_ERR("Unable to end session (%i)", res);
+	}
 }
 
 xiao_state_t state_machine_current_state(void) {

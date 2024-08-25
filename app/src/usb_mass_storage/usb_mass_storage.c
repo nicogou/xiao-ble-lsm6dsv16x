@@ -7,10 +7,14 @@
 #include <zephyr/fs/fs.h>
 #include <stdio.h>
 #include <ff.h>
+#include <errno.h>
+#include <stdlib.h>
 
 LOG_MODULE_REGISTER(mass_storage, CONFIG_APP_LOG_LEVEL);
 
 static struct fs_mount_t fs_mnt;
+struct fs_file_t current_session_file;
+static int current_session_nb = 0;
 
 static int setup_flash(struct fs_mount_t *mnt)
 {
@@ -195,6 +199,142 @@ int usb_mass_storage_create_file(const char *path, const char *filename){
 		return rc;
 	}
 
+	return 0;
+}
+
+int usb_mass_storage_create_dir(const char *path){
+	char file_path[128];
+	uint8_t base = 0;
+
+	if (path == NULL) {
+		LOG_ERR("No path specified to create directory");
+		return -EINVAL;
+	}
+
+	memcpy(file_path, path, strlen(path));
+	if (path[strlen(path) - 1] == '/') {
+		file_path[strlen(path) - 1] = 0;
+	}
+	base = strlen(file_path);
+
+	int res = fs_mkdir(path);
+	if (res != 0) {
+		LOG_ERR("Failed to create dir %s", path);
+		return res;
+	}
+
+	return 0;
+}
+
+static int get_session_nb(const char *path){
+	int res;
+	struct fs_dir_t dirp;
+	static struct fs_dirent entry;
+	int count = 0;
+
+	fs_dir_t_init(&dirp);
+
+	/* Verify fs_opendir() */
+	res = fs_opendir(&dirp, path);
+	if (res) {
+		LOG_ERR("Error opening dir %s [%d]", path, res);
+		return res;
+	}
+
+	int session_nb = 0;
+	for (;;) {
+		/* Verify fs_readdir() */
+		res = fs_readdir(&dirp, &entry);
+
+		/* entry.name[0] == 0 means end-of-dir */
+		/* In that case, create session_0 dir. */
+		if (res || entry.name[0] == 0) {
+			break;
+		}
+
+		if (entry.type == FS_DIR_ENTRY_DIR) {
+			if (strncmp(entry.name, SESSION_DIR_NAME, strlen(SESSION_DIR_NAME)) == 0) {
+				errno = 0;
+				uintmax_t tmp = strtoumax(&entry.name[strlen(SESSION_DIR_NAME)], NULL, 10); // Get directory number as uint
+				if (tmp == UINTMAX_MAX && errno == ERANGE){
+					LOG_ERR("Could not find directory number.");
+				} else {
+					if (tmp > session_nb) {
+						session_nb = tmp;
+					}
+				}
+			}
+		} else {
+		}
+		count++;
+	}
+
+	/* Verify fs_closedir() */
+	res = fs_closedir(&dirp);
+	if (res != 0) {
+		LOG_ERR("Error while closing dir");
+		return res;
+	}
+
+	// At this point, session_nb is equal to the highest dir number.
+	// Increment it to create new folder.
+	session_nb++;
+	return session_nb;
+}
+
+int usb_mass_storage_create_session()
+{
+	struct fs_mount_t *mp = &fs_mnt;
+
+	char path[MAX_PATH];
+	int base = 0;
+
+	int nb = get_session_nb(mp->mnt_point);
+	if (nb < 0){
+		LOG_ERR("Unable to get session number.");
+		return nb;
+	}
+	int length = snprintf( NULL, 0, "%d", nb);
+	char* nb_str = malloc(length + 1 + strlen(SESSION_DIR_NAME));
+	snprintf(nb_str, length + 1 + strlen(SESSION_DIR_NAME), "%s%d", SESSION_DIR_NAME, nb);
+
+	strncpy(path, mp->mnt_point, sizeof(path));
+	base += strlen(mp->mnt_point);
+
+	path[base++] = '/';
+	path[base] = 0;
+
+	strcat(path, nb_str);
+	base += strlen(nb_str);
+	free(nb_str);
+
+	int res = usb_mass_storage_create_dir(path);
+	if (res != 0){
+		LOG_ERR("Failed to create dir %s", path);
+		return res;
+	}
+
+	fs_file_t_init(&current_session_file);
+	strcat(&path[base], "/"SESSION_FILE_NAME SESSION_FILE_EXTENSION);
+	res = fs_open(&current_session_file, path, FS_O_RDWR | FS_O_CREATE);
+	if (res != 0) {
+		LOG_ERR("Failed to create data_file %s (%i)", path, res);
+		return res;
+	}
+
+	fs_write(&current_session_file, SESSION_FILE_HEADER, strlen(SESSION_FILE_HEADER));
+
+	current_session_nb = nb;
+
+	return nb;
+}
+
+int usb_mass_storage_end_current_session(){
+	int res = fs_close(&current_session_file);
+	if (res != 0) {
+		LOG_WRN("Unable to close acc file (%i)", res);
+		return res;
+	}
 	return 0;
 }
 
