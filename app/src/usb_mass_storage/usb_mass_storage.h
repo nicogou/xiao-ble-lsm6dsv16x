@@ -17,3 +17,4 @@ int usb_mass_storage_create_file(const char *path, const char *filename);
 int usb_mass_storage_create_dir(const char *path);
 int usb_mass_storage_create_session();
 int usb_mass_storage_end_current_session();
+int usb_mass_storage_write_to_current_session(char* data, size_t len);

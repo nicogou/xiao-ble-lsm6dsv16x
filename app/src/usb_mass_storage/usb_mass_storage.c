@@ -322,7 +322,11 @@ int usb_mass_storage_create_session()
 		return res;
 	}
 
-	fs_write(&current_session_file, SESSION_FILE_HEADER, strlen(SESSION_FILE_HEADER));
+	res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER, strlen(SESSION_FILE_HEADER));
+	if (res != 0){
+		LOG_ERR("Failed to write session header to session file");
+		return res;
+	}
 
 	current_session_nb = nb;
 
@@ -333,6 +337,15 @@ int usb_mass_storage_end_current_session(){
 	int res = fs_close(&current_session_file);
 	if (res != 0) {
 		LOG_WRN("Unable to close acc file (%i)", res);
+		return res;
+	}
+	return 0;
+}
+
+int usb_mass_storage_write_to_current_session(char* data, size_t len){
+	int res = fs_write(&current_session_file, data, strlen(data)); // Write data to corresponding SD file.
+	if (res < 0) {
+		LOG_ERR("Failed to write data to current session file (%i)", res);
 		return res;
 	}
 	return 0;
