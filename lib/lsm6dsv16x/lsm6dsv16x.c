@@ -146,7 +146,7 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
 			case LSM6DSV16X_TIMESTAMP_TAG:
 				if (sensor.callbacks.lsm6dsv16x_ts_sample_cb) {
-					(*sensor.callbacks.lsm6dsv16x_ts_sample_cb)(*ts);
+					(*sensor.callbacks.lsm6dsv16x_ts_sample_cb)(lsm6dsv16x_from_lsb_to_nsec(*ts));
 				}
 				break;
 

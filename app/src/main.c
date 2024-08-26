@@ -25,8 +25,7 @@ struct line {
 	float_t gyro_y;
 	float_t gyro_z;
 	bool gyro_updated;
-	int32_t ts_start;
-	int32_t ts;
+	float_t ts;
 	bool ts_updated;
 	uint8_t nb_samples_to_discard;
 };
@@ -35,7 +34,6 @@ static struct line l = {
 	.acc_updated = false,
 	.gyro_updated = false,
 	.ts_updated = false,
-	.ts_start = -1,
 	.nb_samples_to_discard = 5,
 };
 
@@ -51,7 +49,7 @@ static void print_line_if_needed(){
 			return;
 		}
 
-		sprintf(txt, "%i,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+		sprintf(txt, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
 		int res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
 
 		if (res < 0) {
@@ -83,12 +81,9 @@ static void gyro_received_cb(float_t x, float_t y, float_t z)
 	return;
 }
 
-static void ts_received_cb(int ts)
+static void ts_received_cb(float_t ts)
 {
-	if (l.ts_start == -1) {
-		l.ts_start = ts;
-	}
-	l.ts = (ts - l.ts_start) / 768;
+	l.ts = ts / 1000000; // Convert ns to ms.
 	l.ts_updated = true;
 
 	print_line_if_needed();
