@@ -29,4 +29,29 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_recording,
 );
 SHELL_CMD_REGISTER(recording, &sub_recording, "Recording commands", NULL);
 
+static int cmd_calibrating_start(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	state_machine_post_event(XIAO_EVENT_START_CALIBRATION);
+	return 0;
+}
+
+static int cmd_calibrating_stop(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_calibrating,
+	SHELL_CMD(start, NULL, "Start recording.", cmd_calibrating_start),
+	SHELL_CMD(stop, NULL, "Stop recording.", cmd_calibrating_stop),
+	SHELL_SUBCMD_SET_END /* Array terminated. */
+);
+SHELL_CMD_REGISTER(cal, &sub_calibrating, "Calibrating commands", NULL);
+
 #endif
