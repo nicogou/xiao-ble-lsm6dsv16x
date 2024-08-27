@@ -127,8 +127,6 @@ void lsm6dsv16x_irq(struct k_work *item) {
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
 	float quat[4];
-	float gravity_mg[3];
-	float gbias_mdps[3];
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
@@ -165,30 +163,27 @@ void lsm6dsv16x_irq(struct k_work *item) {
 				break;
 
 			case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
-				gbias_mdps[0] = lsm6dsv16x_from_fs125_to_mdps(*datax);
-				gbias_mdps[1] = lsm6dsv16x_from_fs125_to_mdps(*datay);
-				gbias_mdps[2] = lsm6dsv16x_from_fs125_to_mdps(*dataz);
-				LOG_DBG("GBIAS [mdps]:%4.2f\t%4.2f\t%4.2f",
-								(double_t)gbias_mdps[0], (double_t)gbias_mdps[1], (double_t)gbias_mdps[2]);
+				if (sensor.callbacks.lsm6dsv16x_gbias_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_gbias_sample_cb)(lsm6dsv16x_from_fs125_to_mdps(*datax), lsm6dsv16x_from_fs125_to_mdps(*datay), lsm6dsv16x_from_fs125_to_mdps(*dataz));
+				}
 				break;
 
 			case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG:
-				gravity_mg[0] = lsm6dsv16x_from_sflp_to_mg(*datax);
-				gravity_mg[1] = lsm6dsv16x_from_sflp_to_mg(*datay);
-				gravity_mg[2] = lsm6dsv16x_from_sflp_to_mg(*dataz);
-				LOG_DBG("Gravity [mg]:%4.2f\t%4.2f\t%4.2f",
-								(double_t)gravity_mg[0], (double_t)gravity_mg[1], (double_t)gravity_mg[2]);
+				if (sensor.callbacks.lsm6dsv16x_gravity_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_gravity_sample_cb)(lsm6dsv16x_from_sflp_to_mg(*datax), lsm6dsv16x_from_sflp_to_mg(*datay), lsm6dsv16x_from_sflp_to_mg(*dataz));
+				}
 				break;
 
 			case LSM6DSV16X_SFLP_GAME_ROTATION_VECTOR_TAG:
 				sflp2q(quat, (uint16_t *)&f_data.data[0]);
-				LOG_DBG("Game Rotation \tX: %2.3f\tY: %2.3f\tZ: %2.3f\tW: %2.3f",
-						(double_t)quat[0], (double_t)quat[1], (double_t)quat[2], (double_t)quat[3]);
-          		break;
+				if (sensor.callbacks.lsm6dsv16x_game_rot_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)(quat[0], quat[1], quat[2], quat[3]);
+				}
+				break;
 
 			default:
 				LOG_WRN("Unhandled data (tag %u) received in FIFO", f_data.tag);
 				break;
-        }
-    }
+		}
+	}
 }
