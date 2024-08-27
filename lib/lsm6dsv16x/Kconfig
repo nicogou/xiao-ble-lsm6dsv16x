@@ -3,6 +3,13 @@ config LSM6DSV16X
 	help
 	  This option enables the LSM6DSV16X library.
 
+config LSM6DSV16X_CALIBRATION_SETTLING_TIME
+	int "Calibration settling time in seconds"
+	default 5
+	help
+	  In order to measure gyroscope bias, it is best to let the sensor rest to let the values settle on startup.
+	  This option configures the time in seconds between the start of the sensor, and the first gyroscope bias measurement.
+
 if LSM6DSV16X
 
 config SPI

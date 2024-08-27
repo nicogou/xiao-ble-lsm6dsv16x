@@ -82,6 +82,7 @@ static void calibrating_entry(void *o)
 {
     LOG_INF("Entering CALIBRATING state.");
     current_state = CALIBRATING;
+	lsm6dsv16x_start_calibration();
 }
 
 static void calibrating_run(void *o)
@@ -98,6 +99,7 @@ static void calibrating_run(void *o)
 
 static void calibrating_exit(void *o)
 {
+	lsm6dsv16x_stop_calibration();
 }
 
 xiao_state_t state_machine_current_state(void) {

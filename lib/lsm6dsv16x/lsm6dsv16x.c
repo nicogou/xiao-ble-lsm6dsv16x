@@ -28,6 +28,13 @@ void imu_int_1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
     return;
 }
 
+static void _calibration_timer_cb(struct k_timer *dummy)
+{
+	sensor.state = LSM6DSV16X_CALIBRATION_RECORDING;
+}
+
+K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
+
 int lsm6dsv16x_start_acquisition()
 {
 	lsm6dsv16x_pin_int_route_t pin_int;
@@ -69,6 +76,7 @@ int lsm6dsv16x_start_acquisition()
 	lsm6dsv16x_timestamp_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 	lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 
+	sensor.state = LSM6DSV16X_RECORDING;
 	return 0;
 }
 
@@ -81,7 +89,27 @@ int lsm6dsv16x_stop_acquisition()
 		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
 
+	sensor.state = LSM6DSV16X_IDLE;
 	return 0;
+}
+
+int lsm6dsv16x_start_calibration()
+{
+	int res = lsm6dsv16x_start_acquisition();
+	if (res != 0)
+	{
+		LOG_ERR("Error while starting the sensor");
+		return res;
+	}
+
+	sensor.state = LSM6DSV16X_CALIBRATION_SETTLING;
+	k_timer_start(&calibration_timer, K_SECONDS(CONFIG_LSM6DSV16X_CALIBRATION_SETTLING_TIME), K_NO_WAIT);
+	return 0;
+}
+
+int lsm6dsv16x_stop_calibration() {
+	// lsm6dsv16x_stop_acquisition switches the sensor state back to LSM6DSV16X_IDLE, no need to do it here.
+	return lsm6dsv16x_stop_acquisition();
 }
 
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
@@ -120,70 +148,100 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 	do {
 		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
+
+	sensor.state = LSM6DSV16X_IDLE;
+}
+
+static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
+{
+	float quat[4];
+
+	datax = (int16_t *)&f_data->data[0];
+	datay = (int16_t *)&f_data->data[2];
+	dataz = (int16_t *)&f_data->data[4];
+	ts = (int32_t *)&f_data->data[0];
+
+	switch (f_data->tag) {
+		case LSM6DSV16X_XL_NC_TAG:
+			if (sensor.callbacks.lsm6dsv16x_acc_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_acc_sample_cb)(lsm6dsv16x_from_fs2_to_mg(*datax), lsm6dsv16x_from_fs2_to_mg(*datay), lsm6dsv16x_from_fs2_to_mg(*dataz));
+			}
+			break;
+
+		case LSM6DSV16X_GY_NC_TAG:
+			if (sensor.callbacks.lsm6dsv16x_gyro_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(lsm6dsv16x_from_fs2000_to_mdps(*datax), lsm6dsv16x_from_fs2000_to_mdps(*datay), lsm6dsv16x_from_fs2000_to_mdps(*dataz));
+			}
+			break;
+
+		case LSM6DSV16X_TIMESTAMP_TAG:
+			if (sensor.callbacks.lsm6dsv16x_ts_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_ts_sample_cb)(lsm6dsv16x_from_lsb_to_nsec(*ts));
+			}
+			break;
+
+		case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
+			if (sensor.callbacks.lsm6dsv16x_gbias_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_gbias_sample_cb)(lsm6dsv16x_from_fs125_to_mdps(*datax), lsm6dsv16x_from_fs125_to_mdps(*datay), lsm6dsv16x_from_fs125_to_mdps(*dataz));
+			}
+			break;
+
+		case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG:
+			if (sensor.callbacks.lsm6dsv16x_gravity_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_gravity_sample_cb)(lsm6dsv16x_from_sflp_to_mg(*datax), lsm6dsv16x_from_sflp_to_mg(*datay), lsm6dsv16x_from_sflp_to_mg(*dataz));
+			}
+			break;
+
+		case LSM6DSV16X_SFLP_GAME_ROTATION_VECTOR_TAG:
+			sflp2q(quat, (uint16_t *)&f_data->data[0]);
+			if (sensor.callbacks.lsm6dsv16x_game_rot_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)(quat[0], quat[1], quat[2], quat[3]);
+			}
+			break;
+
+		default:
+			LOG_WRN("Unhandled data (tag %u) received in FIFO", f_data->tag);
+			break;
+	}
+}
+
+static void _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data)
+{
+	datax = (int16_t *)&f_data->data[0];
+	datay = (int16_t *)&f_data->data[2];
+	dataz = (int16_t *)&f_data->data[4];
+	ts = (int32_t *)&f_data->data[0];
+
+	switch (f_data->tag) {
+		default:
+			LOG_WRN("Unhandled data (tag %u) received while calibrating IMU", f_data->tag);
+			break;
+	}
 }
 
 void lsm6dsv16x_irq(struct k_work *item) {
 
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
-	float quat[4];
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
 	num = fifo_status.fifo_level;
 
-	LOG_DBG("Received %d samples from FIFO.", num);
+	if (sensor.state != LSM6DSV16X_CALIBRATION_SETTLING) {
+		LOG_DBG("Received %d samples from FIFO.", num);
+	}
+
 	while (num--) {
         lsm6dsv16x_fifo_out_raw_t f_data;
 
         /* Read FIFO sensor value */
         lsm6dsv16x_fifo_out_raw_get(&sensor.dev_ctx, &f_data);
-        datax = (int16_t *)&f_data.data[0];
-        datay = (int16_t *)&f_data.data[2];
-        dataz = (int16_t *)&f_data.data[4];
-        ts = (int32_t *)&f_data.data[0];
-
-        switch (f_data.tag) {
-			case LSM6DSV16X_XL_NC_TAG:
-				if (sensor.callbacks.lsm6dsv16x_acc_sample_cb) {
-					(*sensor.callbacks.lsm6dsv16x_acc_sample_cb)(lsm6dsv16x_from_fs2_to_mg(*datax), lsm6dsv16x_from_fs2_to_mg(*datay), lsm6dsv16x_from_fs2_to_mg(*dataz));
-				}
-				break;
-
-			case LSM6DSV16X_GY_NC_TAG:
-				if (sensor.callbacks.lsm6dsv16x_gyro_sample_cb) {
-					(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(lsm6dsv16x_from_fs2000_to_mdps(*datax), lsm6dsv16x_from_fs2000_to_mdps(*datay), lsm6dsv16x_from_fs2000_to_mdps(*dataz));
-				}
-				break;
-
-			case LSM6DSV16X_TIMESTAMP_TAG:
-				if (sensor.callbacks.lsm6dsv16x_ts_sample_cb) {
-					(*sensor.callbacks.lsm6dsv16x_ts_sample_cb)(lsm6dsv16x_from_lsb_to_nsec(*ts));
-				}
-				break;
-
-			case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
-				if (sensor.callbacks.lsm6dsv16x_gbias_sample_cb) {
-					(*sensor.callbacks.lsm6dsv16x_gbias_sample_cb)(lsm6dsv16x_from_fs125_to_mdps(*datax), lsm6dsv16x_from_fs125_to_mdps(*datay), lsm6dsv16x_from_fs125_to_mdps(*dataz));
-				}
-				break;
-
-			case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG:
-				if (sensor.callbacks.lsm6dsv16x_gravity_sample_cb) {
-					(*sensor.callbacks.lsm6dsv16x_gravity_sample_cb)(lsm6dsv16x_from_sflp_to_mg(*datax), lsm6dsv16x_from_sflp_to_mg(*datay), lsm6dsv16x_from_sflp_to_mg(*dataz));
-				}
-				break;
-
-			case LSM6DSV16X_SFLP_GAME_ROTATION_VECTOR_TAG:
-				sflp2q(quat, (uint16_t *)&f_data.data[0]);
-				if (sensor.callbacks.lsm6dsv16x_game_rot_sample_cb) {
-					(*sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)(quat[0], quat[1], quat[2], quat[3]);
-				}
-				break;
-
-			default:
-				LOG_WRN("Unhandled data (tag %u) received in FIFO", f_data.tag);
-				break;
+		if (sensor.state == LSM6DSV16X_RECORDING)
+		{
+			_data_handler_recording(&f_data);
+		} else if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING) {
+			_data_handler_calibrating(&f_data);
 		}
 	}
 }
