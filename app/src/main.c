@@ -55,18 +55,17 @@ static struct line l = {
 
 static void print_line_if_needed(){
 	char txt[100];
-	if (l.acc_updated && l.gyro_updated && l.ts_updated && l.gbias_updated) {
+	if (l.acc_updated && l.gyro_updated && l.ts_updated) {
 		l.acc_updated = false;
 		l.gyro_updated = false;
 		l.ts_updated = false;
-		l.gbias_updated = false;
 
 		if (l.nb_samples_to_discard) {
 			l.nb_samples_to_discard--;
 			return;
 		}
 
-		sprintf(txt, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)(l.gyro_x/* - l.gbias_x*/), (double)(l.gyro_y/* - l.gbias_y*/), (double)(l.gyro_z/* - l.gbias_z*/));
+		sprintf(txt, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
 		int res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
 
 		if (res < 0) {
