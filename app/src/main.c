@@ -28,6 +28,19 @@ struct line {
 	float_t ts;
 	bool ts_updated;
 	uint8_t nb_samples_to_discard;
+	float_t gbias_x;
+	float_t gbias_y;
+	float_t gbias_z;
+	bool gbias_updated;
+	float_t gravity_x;
+	float_t gravity_y;
+	float_t gravity_z;
+	bool gravity_updated;
+	float_t game_rot_x;
+	float_t game_rot_y;
+	float_t game_rot_z;
+	float_t game_rot_w;
+	bool game_rot_updated;
 };
 
 static struct line l = {
@@ -35,6 +48,9 @@ static struct line l = {
 	.gyro_updated = false,
 	.ts_updated = false,
 	.nb_samples_to_discard = 5,
+	.gbias_updated = false,
+	.gravity_updated = false,
+	.game_rot_updated = false,
 };
 
 static void print_line_if_needed(){
@@ -90,6 +106,34 @@ static void ts_received_cb(float_t ts)
 	return;
 }
 
+static void gbias_received_cb(float_t x, float_t y, float_t z)
+{
+	l.gbias_x = x;
+	l.gbias_y = y;
+	l.gbias_z = z;
+	l.gbias_updated = true;
+	LOG_DBG("Received gyroscope bias: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
+}
+
+static void gravity_received_cb(float_t x, float_t y, float_t z)
+{
+	l.gravity_x = x;
+	l.gravity_y = y;
+	l.gravity_z = z;
+	l.gravity_updated = true;
+	LOG_DBG("Received gravity: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
+}
+
+static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
+{
+	l.game_rot_x = x;
+	l.game_rot_y = y;
+	l.game_rot_z = z;
+	l.game_rot_w = w;
+	l.game_rot_updated = true;
+	LOG_DBG("Received game rotation: x=%f, y=%f, z=%f, w=%f", (double)x, (double)y, (double)z, (double)w);
+}
+
 int main(void)
 {
 	int ret;
@@ -99,7 +143,10 @@ int main(void)
 	lsm6dsv16x_cb_t callbacks = {
 		.lsm6dsv16x_ts_sample_cb = ts_received_cb,
 		.lsm6dsv16x_acc_sample_cb = acc_received_cb,
-		.lsm6dsv16x_gyro_sample_cb = gyro_received_cb
+		.lsm6dsv16x_gyro_sample_cb = gyro_received_cb,
+		.lsm6dsv16x_gbias_sample_cb = gbias_received_cb,
+		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
+		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
 	};
 
 	lsm6dsv16x_init(callbacks);

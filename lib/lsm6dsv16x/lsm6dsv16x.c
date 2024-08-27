@@ -1,6 +1,7 @@
 #include "app/lib/lsm6dsv16x.h"
 #include "lsm6dsv16x_reg.h"
 #include "platform_interface/platform_interface.h"
+#include "lsm6dsv16x_sflp_utils.h"
 
 #include <zephyr/logging/log.h>
 
@@ -30,6 +31,7 @@ void imu_int_1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
 int lsm6dsv16x_start_acquisition()
 {
 	lsm6dsv16x_pin_int_route_t pin_int;
+	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp;
 
 	/* Enable Block Data Update */
 	lsm6dsv16x_block_data_update_set(&sensor.dev_ctx, PROPERTY_ENABLE);
@@ -42,6 +44,13 @@ int lsm6dsv16x_start_acquisition()
 	* stored in FIFO) to FIFO_WATERMARK samples
 	*/
 	lsm6dsv16x_fifo_watermark_set(&sensor.dev_ctx, FIFO_WATERMARK);
+
+	/* Set FIFO batch of sflp data */
+	fifo_sflp.game_rotation = 1;
+	fifo_sflp.gravity = 1;
+	fifo_sflp.gbias = 1;
+	lsm6dsv16x_fifo_sflp_batch_set(&sensor.dev_ctx, fifo_sflp);
+
 	/* Set FIFO batch XL/Gyro ODR to 60Hz */
 	lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
 	lsm6dsv16x_fifo_gy_batch_set(&sensor.dev_ctx, LSM6DSV16X_GY_BATCHED_AT_60Hz);
@@ -53,10 +62,12 @@ int lsm6dsv16x_start_acquisition()
 	//lsm6dsv16x_pin_int2_route_set(&sensor.dev_ctx, &pin_int);
 
 	/* Set Output Data Rate */
-	lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_60Hz);
-	lsm6dsv16x_gy_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_60Hz);
+	lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
+	lsm6dsv16x_gy_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
+	lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
 	lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_1);
 	lsm6dsv16x_timestamp_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+	lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 
 	return 0;
 }
@@ -115,6 +126,7 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
+	float quat[4];
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
@@ -150,9 +162,28 @@ void lsm6dsv16x_irq(struct k_work *item) {
 				}
 				break;
 
-			default:
-				LOG_WRN("Unhandled data received in FIFO");
+			case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
+				if (sensor.callbacks.lsm6dsv16x_gbias_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_gbias_sample_cb)(lsm6dsv16x_from_fs125_to_mdps(*datax), lsm6dsv16x_from_fs125_to_mdps(*datay), lsm6dsv16x_from_fs125_to_mdps(*dataz));
+				}
 				break;
-        }
-    }
+
+			case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG:
+				if (sensor.callbacks.lsm6dsv16x_gravity_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_gravity_sample_cb)(lsm6dsv16x_from_sflp_to_mg(*datax), lsm6dsv16x_from_sflp_to_mg(*datay), lsm6dsv16x_from_sflp_to_mg(*dataz));
+				}
+				break;
+
+			case LSM6DSV16X_SFLP_GAME_ROTATION_VECTOR_TAG:
+				sflp2q(quat, (uint16_t *)&f_data.data[0]);
+				if (sensor.callbacks.lsm6dsv16x_game_rot_sample_cb) {
+					(*sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)(quat[0], quat[1], quat[2], quat[3]);
+				}
+				break;
+
+			default:
+				LOG_WRN("Unhandled data (tag %u) received in FIFO", f_data.tag);
+				break;
+		}
+	}
 }

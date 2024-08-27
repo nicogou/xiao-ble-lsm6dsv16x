@@ -10,6 +10,9 @@ typedef struct {
 	void (*lsm6dsv16x_ts_sample_cb)(float_t);
 	void (*lsm6dsv16x_acc_sample_cb)(float_t, float_t, float_t);
 	void (*lsm6dsv16x_gyro_sample_cb)(float_t, float_t, float_t);
+	void (*lsm6dsv16x_gbias_sample_cb)(float_t, float_t, float_t);
+	void (*lsm6dsv16x_game_rot_sample_cb)(float_t, float_t, float_t, float_t);
+	void (*lsm6dsv16x_gravity_sample_cb)(float_t, float_t, float_t);
 } lsm6dsv16x_cb_t;
 
 typedef struct {
