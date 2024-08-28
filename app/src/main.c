@@ -134,6 +134,12 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 	LOG_DBG("Received game rotation: x=%f, y=%f, z=%f, w=%f", (double)x, (double)y, (double)z, (double)w);
 }
 
+static void calib_res_cb(float_t x, float_t y, float_t z)
+{
+	LOG_INF("Calibration succeeded. Gbias x: %f y: %f z: %f", (double)x, (double)y, (double)z);
+	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
+}
+
 int main(void)
 {
 	int ret;
@@ -147,6 +153,7 @@ int main(void)
 		.lsm6dsv16x_gbias_sample_cb = gbias_received_cb,
 		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
+		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
 	};
 
 	lsm6dsv16x_init(callbacks);

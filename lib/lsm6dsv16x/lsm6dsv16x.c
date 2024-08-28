@@ -205,24 +205,35 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 	}
 }
 
-static void _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data)
+static bool _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data, float_t* res)
 {
 	datax = (int16_t *)&f_data->data[0];
 	datay = (int16_t *)&f_data->data[2];
 	dataz = (int16_t *)&f_data->data[4];
 	ts = (int32_t *)&f_data->data[0];
+	bool handled = false;
 
 	switch (f_data->tag) {
+		case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
+			res[0] = lsm6dsv16x_from_fs125_to_mdps(*datax);
+			res[1] = lsm6dsv16x_from_fs125_to_mdps(*datay);
+			res[2] = lsm6dsv16x_from_fs125_to_mdps(*dataz);
+			handled = true;
+			break;
+
 		default:
-			LOG_WRN("Unhandled data (tag %u) received while calibrating IMU", f_data->tag);
+			//LOG_WRN("Unhandled data (tag %u) received while calibrating IMU", f_data->tag);
 			break;
 	}
+
+	return handled;
 }
 
 void lsm6dsv16x_irq(struct k_work *item) {
 
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
+	float_t gbias_tmp[3];
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
@@ -240,8 +251,18 @@ void lsm6dsv16x_irq(struct k_work *item) {
 		if (sensor.state == LSM6DSV16X_RECORDING)
 		{
 			_data_handler_recording(&f_data);
-		} else if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING) {
-			_data_handler_calibrating(&f_data);
+		} else if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING)
+		{
+			if (_data_handler_calibrating(&f_data, gbias_tmp))
+			{
+				break;
+			}
 		}
+	}
+
+	if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING && sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+	{
+		lsm6dsv16x_stop_calibration();
+		(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
 	}
 }
