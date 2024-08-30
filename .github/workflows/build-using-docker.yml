@@ -16,15 +16,15 @@ jobs:
       - name: Checkout repository with example application
         uses: actions/checkout@v4
         with:
-          path: xiao-ble-lsm6dsv16x
+          path: xiao-ble-lsm6dsv16x.git
 
       - name: Prepare west project
         run: |
-          west init -l xiao-ble-lsm6dsv16x
+          west init -l xiao-ble-lsm6dsv16x.git
           west update -o=--depth=1 -n
 
       - name: Build firmware
-        working-directory: xiao-ble-lsm6dsv16x
+        working-directory: xiao-ble-lsm6dsv16x.git
         run: |
           west build -b xiao_ble/nrf52840/sense app -- -DEXTRA_CONF_FILE=prj_usb_mass_storage.conf
 
@@ -32,9 +32,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: built-applications
-          path: xiao-ble-lsm6dsv16x/build/zephyr/zephyr.uf2
+          path: xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.uf2
 
       - name: Twister Tests
-        working-directory: xiao-ble-lsm6dsv16x
+        working-directory: xiao-ble-lsm6dsv16x.git
         run: |
           west twister -T tests -v --inline-logs --integration
