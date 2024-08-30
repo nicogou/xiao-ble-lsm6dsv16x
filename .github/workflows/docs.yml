@@ -3,7 +3,7 @@
 
 name: Documentation
 
-on: [push, pull_request]
+on: [workflow_dispatch]
 
 env:
   DOXYGEN_VERSION: 1.9.6
