@@ -16,7 +16,6 @@
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
-#define CALIBRATION_FILE_NAME "cal.txt"
 
 static struct fs_file_t calibration_file;
 
@@ -147,16 +146,16 @@ static void calib_res_cb(float_t x, float_t y, float_t z)
 		LOG_ERR("Error creating calibration file (%i)", res);
 	} else {
 		char txt[50];
-		sprintf(txt, "x:%.2f\ny:%.2f\nz:%.2f", (double)x, (double)y, (double)z);
+		sprintf(txt, "x:%+3.2f\ny:%+3.2f\nz:%+3.2f", (double)x, (double)y, (double)z);
 		res = usb_mass_storage_write_to_file(txt, strlen(txt), &calibration_file, true);
 		if (res)
 		{
-			LOG_ERR("failed to write to cal file");
+			LOG_ERR("Failed to write to cal file (%i)", res);
 		}
 		res = usb_mass_storage_close_file(&calibration_file);
 		if (res)
 		{
-			LOG_ERR("Failed to close cal file");
+			LOG_ERR("Failed to close cal file (%i)", res);
 		}
 	}
 
@@ -181,6 +180,8 @@ int main(void)
 
 	lsm6dsv16x_init(callbacks);
 
+	xiao_state_t starting_state = IDLE;
+
 #if CONFIG_USB_MASS_STORAGE
 	ret = usb_mass_storage_init();
 
@@ -190,9 +191,17 @@ int main(void)
 	}
 
 	LOG_INF("The device is put in USB mass storage mode.");
+
+	ret = usb_mass_storage_check_calibration_file_contents(NULL, NULL, NULL);
+	if (ret == -ENOENT) {
+		// Trigger calibration.
+		LOG_WRN("Correct calibration file not found, triggering calibration");
+		starting_state = CALIBRATING;
+	}
+
 #endif
 
-	state_machine_init();
+	state_machine_init(starting_state);
 
 	return state_machine_run();
 }

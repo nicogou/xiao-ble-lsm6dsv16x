@@ -13,7 +13,7 @@ typedef enum {
 /* List of states */
 typedef enum xiao_state { IDLE, RECORDING, CALIBRATING } xiao_state_t;
 
-int state_machine_init(void);
+int state_machine_init(xiao_state_t starting_state);
 int state_machine_run(void);
 int state_machine_post_event(xiao_event_t event);
 xiao_state_t state_machine_current_state(void);

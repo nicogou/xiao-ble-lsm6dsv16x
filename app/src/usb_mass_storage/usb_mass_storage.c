@@ -52,7 +52,7 @@ static int mount_app_fs(struct fs_mount_t *mnt)
 
 	mnt->type = FS_FATFS;
 	mnt->fs_data = &fat_fs;
-	mnt->mnt_point = "/NAND:";
+	mnt->mnt_point = MOUNT_POINT;
 
 	rc = fs_mount(mnt);
 
@@ -391,6 +391,23 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 	}
 
 	return 0;
+}
+
+int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *z)
+{
+	struct fs_dirent file_info;
+	int ret = fs_stat(MOUNT_POINT "/" CALIBRATION_FILE_NAME, &file_info);
+	if (ret) {
+		LOG_ERR("Failed to get calibration file info (%i)", ret);
+		return ret;
+	}
+
+	if (file_info.size != CALIBRATION_FILE_SIZE)
+	{
+		LOG_ERR("Calibration file is not the right size. Expected %u, got %u", CALIBRATION_FILE_SIZE, file_info.size);
+		return -ENOENT;
+	}
+
 }
 
 int usb_mass_storage_init() {

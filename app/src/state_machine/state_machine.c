@@ -121,13 +121,13 @@ int state_machine_post_event(xiao_event_t event)
 }
 
 /* Initialize the state machine */
-int state_machine_init(void)
+int state_machine_init(xiao_state_t starting_state)
 {
     /* Initialize the event */
     k_event_init(&s_obj.smf_event);
 
     /* Set initial state */
-    smf_set_initial(SMF_CTX(&s_obj), &xiao_states[IDLE]);
+    smf_set_initial(SMF_CTX(&s_obj), &xiao_states[starting_state]);
 
     return 0;
 }

@@ -3,6 +3,8 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/fs/fs.h>
 
+#define MOUNT_POINT "/NAND:"
+
 #define STORAGE_PARTITION		storage_partition
 #define STORAGE_PARTITION_ID	FIXED_PARTITION_ID(STORAGE_PARTITION)
 #define SESSION_DIR_NAME		"SESSION"
@@ -11,6 +13,9 @@
 #define SESSION_FILE_NAME		"SESSION"
 #define SESSION_FILE_EXTENSION	".CSV"
 #define SESSION_FILE_HEADER		"ts,ax,ay,az,gx,gy,gz\n"
+
+#define CALIBRATION_FILE_NAME	"CAL.TXT"
+#define CALIBRATION_FILE_SIZE	29
 
 int usb_mass_storage_init();
 int usb_mass_storage_lsdir(const char *path);
@@ -21,3 +26,4 @@ int usb_mass_storage_close_file(struct fs_file_t *f);
 int usb_mass_storage_create_session();
 int usb_mass_storage_end_current_session();
 int usb_mass_storage_write_to_current_session(char* data, size_t len);
+int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *z);
