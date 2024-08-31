@@ -173,11 +173,11 @@ int usb_mass_storage_create_file(const char *path, const char *filename, struct 
 		memcpy(file_path, mp->mnt_point, strlen(mp->mnt_point));
 		base = strlen(mp->mnt_point);
 	} else {
-		memcpy(file_path, path, strlen(path));
+		base = strlen(path);
 		if (path[strlen(path) - 1] == '/') {
-			file_path[strlen(path) - 1] = 0;
+			base = strlen(path) - 1;
 		}
-		base = strlen(file_path);
+		memcpy(file_path, path, base);
 	}
 
 	file_path[base++] = '/';
@@ -315,9 +315,7 @@ int usb_mass_storage_create_session()
 		return res;
 	}
 
-	fs_file_t_init(&current_session_file);
-	strcat(&path[base], "/"SESSION_FILE_NAME SESSION_FILE_EXTENSION);
-	res = fs_open(&current_session_file, path, FS_O_RDWR | FS_O_CREATE);
+	res = usb_mass_storage_create_file(path, SESSION_FILE_NAME SESSION_FILE_EXTENSION, &current_session_file, true);
 	if (res != 0) {
 		LOG_ERR("Failed to create data_file %s (%i)", path, res);
 		return res;
