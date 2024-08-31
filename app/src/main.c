@@ -16,6 +16,8 @@
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
+#define CALIBRATION_FILE_NAME "cal.txt"
+
 static struct fs_file_t calibration_file;
 
 struct line {
@@ -139,7 +141,7 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 static void calib_res_cb(float_t x, float_t y, float_t z)
 {
 	LOG_INF("Calibration succeeded. Gbias x: %f y: %f z: %f", (double)x, (double)y, (double)z);
-	int res = usb_mass_storage_create_file(NULL, "cal.txt", &calibration_file, true);
+	int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, &calibration_file, true);
 	if (res != 0)
 	{
 		LOG_ERR("Error creating calibration file (%i)", res);
