@@ -16,9 +16,6 @@
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
-
-static struct fs_file_t calibration_file;
-
 struct line {
 	float_t acc_x;
 	float_t acc_y;
@@ -140,19 +137,19 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 static void calib_res_cb(float_t x, float_t y, float_t z)
 {
 	LOG_INF("Calibration succeeded. Gbias x: %f y: %f z: %f", (double)x, (double)y, (double)z);
-	int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, &calibration_file, true);
+	int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
 	if (res != 0)
 	{
 		LOG_ERR("Error creating calibration file (%i)", res);
 	} else {
 		char txt[50];
 		sprintf(txt, "x:%+3.2f\ny:%+3.2f\nz:%+3.2f", (double)x, (double)y, (double)z);
-		res = usb_mass_storage_write_to_file(txt, strlen(txt), &calibration_file, true);
+		res = usb_mass_storage_write_to_file(txt, strlen(txt), usb_mass_storage_get_calibration_file_p(), true);
 		if (res)
 		{
 			LOG_ERR("Failed to write to cal file (%i)", res);
 		}
-		res = usb_mass_storage_close_file(&calibration_file);
+		res = usb_mass_storage_close_file(usb_mass_storage_get_calibration_file_p());
 		if (res)
 		{
 			LOG_ERR("Failed to close cal file (%i)", res);
@@ -192,11 +189,18 @@ int main(void)
 
 	LOG_INF("The device is put in USB mass storage mode.");
 
-	ret = usb_mass_storage_check_calibration_file_contents(NULL, NULL, NULL);
+	float x, y, z;
+	ret = usb_mass_storage_check_calibration_file_contents(&x, &y, &z);
 	if (ret == -ENOENT) {
-		// Trigger calibration.
+		// No calibration file present, or it has the wrong size, trigger calibration.
 		LOG_WRN("Correct calibration file not found, triggering calibration");
 		starting_state = CALIBRATING;
+	} else if (ret != 0) {
+		// Something else went wrong when reading calibration file
+		LOG_ERR("Failed to check calibration file (%i)", ret);
+	} else {
+		// Calibration file has been read properly.
+		LOG_DBG("x: %+3.2f - y: %+3.2f - z: %+3.2f", (double)x, (double)y, (double)z);
 	}
 
 #endif

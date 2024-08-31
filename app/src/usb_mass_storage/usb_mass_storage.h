@@ -16,6 +16,10 @@
 
 #define CALIBRATION_FILE_NAME	"CAL.TXT"
 #define CALIBRATION_FILE_SIZE	29
+#define CALIBRATION_DATA_SIZE	7
+#define CALIBRATION_DATA_X_POSITION	2
+#define CALIBRATION_DATA_Y_POSITION	12
+#define CALIBRATION_DATA_Z_POSITION	22
 
 int usb_mass_storage_init();
 int usb_mass_storage_lsdir(const char *path);
@@ -27,3 +31,5 @@ int usb_mass_storage_create_session();
 int usb_mass_storage_end_current_session();
 int usb_mass_storage_write_to_current_session(char* data, size_t len);
 int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *z);
+struct fs_file_t* usb_mass_storage_get_session_file_p();
+struct fs_file_t* usb_mass_storage_get_calibration_file_p();

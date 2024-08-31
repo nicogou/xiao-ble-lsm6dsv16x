@@ -14,7 +14,18 @@ LOG_MODULE_REGISTER(mass_storage, CONFIG_APP_LOG_LEVEL);
 
 static struct fs_mount_t fs_mnt;
 struct fs_file_t current_session_file;
+static struct fs_file_t calibration_file;
 static int current_session_nb = 0;
+
+struct fs_file_t* usb_mass_storage_get_session_file_p()
+{
+	return &current_session_file;
+}
+
+struct fs_file_t* usb_mass_storage_get_calibration_file_p()
+{
+	return &calibration_file;
+}
 
 static int setup_flash(struct fs_mount_t *mnt)
 {
@@ -408,6 +419,40 @@ int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *
 		return -ENOENT;
 	}
 
+	struct fs_file_t f;
+	char f_path[] = MOUNT_POINT "/" CALIBRATION_FILE_NAME;
+	fs_file_t_init(&f);
+	ret = fs_open(&f, f_path, FS_O_READ);
+	if (ret != 0) {
+		LOG_ERR("Failed to open file %s (%i)", f_path, ret);
+		return ret;
+	}
+
+	char file_content[CALIBRATION_FILE_SIZE];
+	int size_read = fs_read(&f, file_content, CALIBRATION_FILE_SIZE);
+	if (size_read != CALIBRATION_FILE_SIZE && size_read >= 0)
+	{
+		LOG_ERR("Calibration file contents read improperly. Expected %u bytes, got %i", CALIBRATION_FILE_SIZE, size_read);
+		return -ENOENT;
+	}
+	else if (size_read < 0)
+	{
+		LOG_ERR("Failed to read calibration file %i", size_read);
+		return size_read;
+	}
+
+	char xf[CALIBRATION_DATA_SIZE + 1], yf[CALIBRATION_DATA_SIZE + 1], zf[CALIBRATION_DATA_SIZE + 1];
+	memcpy(xf, &file_content[CALIBRATION_DATA_X_POSITION], CALIBRATION_DATA_SIZE);
+	xf[CALIBRATION_DATA_SIZE] = 0;
+	*x = strtof(xf, NULL);
+	memcpy(yf, &file_content[CALIBRATION_DATA_Y_POSITION], CALIBRATION_DATA_SIZE);
+	yf[CALIBRATION_DATA_SIZE] = 0;
+	*y = strtof(yf, NULL);
+	memcpy(zf, &file_content[CALIBRATION_DATA_Z_POSITION], CALIBRATION_DATA_SIZE);
+	z[CALIBRATION_DATA_SIZE] = 0;
+	*z = strtof(zf, NULL);
+
+	return 0;
 }
 
 int usb_mass_storage_init() {
