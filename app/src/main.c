@@ -16,6 +16,8 @@
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
+static struct fs_file_t calibration_file;
+
 struct line {
 	float_t acc_x;
 	float_t acc_y;
@@ -137,6 +139,25 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 static void calib_res_cb(float_t x, float_t y, float_t z)
 {
 	LOG_INF("Calibration succeeded. Gbias x: %f y: %f z: %f", (double)x, (double)y, (double)z);
+	int res = usb_mass_storage_create_file(NULL, "cal.txt", &calibration_file, true);
+	if (res != 0)
+	{
+		LOG_ERR("Error creating calibration file (%i)", res);
+	} else {
+		char txt[50];
+		sprintf(txt, "x:%.2f\ny:%.2f\nz:%.2f", (double)x, (double)y, (double)z);
+		res = usb_mass_storage_write_to_file(txt, strlen(txt), &calibration_file);
+		if (res)
+		{
+			LOG_ERR("failed to write to cal file");
+		}
+		res = usb_mass_storage_close_file(&calibration_file);
+		if (res)
+		{
+			LOG_ERR("Failed to close cal file");
+		}
+	}
+
 	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
 }
 
