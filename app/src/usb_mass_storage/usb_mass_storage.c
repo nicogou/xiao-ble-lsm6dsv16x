@@ -203,9 +203,20 @@ int usb_mass_storage_create_file(const char *path, const char *filename, struct 
 	return 0;
 }
 
-int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f)
+int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, bool erase_content)
 {
-	int res = fs_write(f, data, strlen(data)); // Write data to corresponding SD file.
+	int res;
+	if (erase_content)
+	{
+		res = fs_truncate(f, 0);
+		if (res != 0)
+		{
+			LOG_ERR("Error truncating calibration file (%i)", res);
+		}
+
+	}
+
+	res = fs_write(f, data, strlen(data)); // Write data to corresponding SD file.
 	if (res < 0) {
 		LOG_ERR("Failed to write data to file (%i)", res);
 		return res;

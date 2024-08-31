@@ -146,7 +146,7 @@ static void calib_res_cb(float_t x, float_t y, float_t z)
 	} else {
 		char txt[50];
 		sprintf(txt, "x:%.2f\ny:%.2f\nz:%.2f", (double)x, (double)y, (double)z);
-		res = usb_mass_storage_write_to_file(txt, strlen(txt), &calibration_file);
+		res = usb_mass_storage_write_to_file(txt, strlen(txt), &calibration_file, true);
 		if (res)
 		{
 			LOG_ERR("failed to write to cal file");
