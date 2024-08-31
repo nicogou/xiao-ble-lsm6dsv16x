@@ -164,11 +164,10 @@ int usb_mass_storage_lsdir(const char *path)
 	return rc;
 }
 
-int usb_mass_storage_create_file(const char *path, const char *filename){
+int usb_mass_storage_create_file(const char *path, const char *filename, struct fs_file_t *f, bool keep_open){
 	char file_path[128];
 	uint8_t base = 0;
 	struct fs_mount_t *mp = &fs_mnt;
-	struct fs_file_t file;
 
 	if (path == NULL) {
 		memcpy(file_path, mp->mnt_point, strlen(mp->mnt_point));
@@ -185,18 +184,20 @@ int usb_mass_storage_create_file(const char *path, const char *filename){
 	file_path[base] = 0;
 
 	strcat(file_path, filename);
-	fs_file_t_init(&file);
+	fs_file_t_init(f);
 
-	int rc = fs_open(&file, file_path, FS_O_CREATE | FS_O_RDWR);
+	int rc = fs_open(f, file_path, FS_O_CREATE | FS_O_RDWR);
 	if (rc != 0) {
 		LOG_ERR("Failed to create file %s (%i)", file_path, rc);
 		return rc;
 	}
 
-	rc = fs_close(&file);
-	if (rc != 0) {
-		LOG_ERR("Failed to close file %s (%i)", file_path, rc);
-		return rc;
+	if (!keep_open) {
+		rc = fs_close(f);
+		if (rc != 0) {
+			LOG_ERR("Failed to close file %s (%i)", file_path, rc);
+			return rc;
+		}
 	}
 
 	return 0;

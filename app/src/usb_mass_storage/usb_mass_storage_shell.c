@@ -3,6 +3,9 @@
 #include <zephyr/kernel.h>
 #include "usb_mass_storage.h"
 #include <zephyr/shell/shell.h>
+#include <zephyr/fs/fs.h>
+
+static struct fs_file_t file;
 
 static int cmd_storage_ls(const struct shell *sh, size_t argc, char **argv)
 {
@@ -14,7 +17,7 @@ static int cmd_storage_ls(const struct shell *sh, size_t argc, char **argv)
 static int cmd_storage_create(const struct shell *sh, size_t argc, char **argv)
 {
     int res;
-    res = usb_mass_storage_create_file(argv[2], argv[1]);
+    res = usb_mass_storage_create_file(argv[2], argv[1], &file, false);
     if (res) {
         shell_error(sh, "Failed to create file %s at %s (%d)", argv[1], argv[2], res);
     } else {
