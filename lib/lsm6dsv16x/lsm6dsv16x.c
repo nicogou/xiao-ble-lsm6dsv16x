@@ -32,6 +32,7 @@ int lsm6dsv16x_start_acquisition()
 {
 	lsm6dsv16x_pin_int_route_t pin_int;
 	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp;
+	lsm6dsv16x_filt_settling_mask_t filt_settling_mask;
 
 	/* Enable Block Data Update */
 	lsm6dsv16x_block_data_update_set(&sensor.dev_ctx, PROPERTY_ENABLE);
@@ -68,6 +69,12 @@ int lsm6dsv16x_start_acquisition()
 	lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_1);
 	lsm6dsv16x_timestamp_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 	lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+
+	/* Mask accelerometer and gyroscope data until the settling of the sensors filter is completed */
+  	filt_settling_mask.drdy = PROPERTY_ENABLE;
+  	filt_settling_mask.irq_xl = PROPERTY_ENABLE;
+  	filt_settling_mask.irq_g = PROPERTY_ENABLE;
+  	lsm6dsv16x_filt_settling_mask_set(&sensor.dev_ctx, filt_settling_mask);
 
 	return 0;
 }
