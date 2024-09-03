@@ -13,6 +13,7 @@
 #include <app_version.h>
 
 #include <app/lib/lsm6dsv16x.h>
+#include <app/lib/xiao_smp_bluetooth.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -27,7 +28,6 @@ struct line {
 	bool gyro_updated;
 	float_t ts;
 	bool ts_updated;
-	uint8_t nb_samples_to_discard;
 	float_t gbias_x;
 	float_t gbias_y;
 	float_t gbias_z;
@@ -47,7 +47,6 @@ static struct line l = {
 	.acc_updated = false,
 	.gyro_updated = false,
 	.ts_updated = false,
-	.nb_samples_to_discard = 5,
 	.gbias_updated = false,
 	.gravity_updated = false,
 	.game_rot_updated = false,
@@ -59,11 +58,6 @@ static void print_line_if_needed(){
 		l.acc_updated = false;
 		l.gyro_updated = false;
 		l.ts_updated = false;
-
-		if (l.nb_samples_to_discard) {
-			l.nb_samples_to_discard--;
-			return;
-		}
 
 		sprintf(txt, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
 		int res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
@@ -207,6 +201,8 @@ int main(void)
 	}
 
 #endif
+
+	start_smp_bluetooth_adverts();
 
 	state_machine_init(starting_state);
 

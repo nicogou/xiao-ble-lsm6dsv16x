@@ -40,6 +40,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 {
 	lsm6dsv16x_pin_int_route_t pin_int;
 	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp;
+	lsm6dsv16x_filt_settling_mask_t filt_settling_mask;
 	int ret;
 
 	/* Enable Block Data Update */
@@ -129,6 +130,17 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	}
 
 	sensor.state = LSM6DSV16X_RECORDING;
+	/* Mask accelerometer and gyroscope data until the settling of the sensors filter is completed */
+  	filt_settling_mask.drdy = PROPERTY_ENABLE;
+  	filt_settling_mask.irq_xl = PROPERTY_ENABLE;
+  	filt_settling_mask.irq_g = PROPERTY_ENABLE;
+  	ret = lsm6dsv16x_filt_settling_mask_set(&sensor.dev_ctx, filt_settling_mask);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_filt_settling_mask_set (%i)", ret);
+	}
+
+	sensor.nb_samples_to_discard = CONFIG_LSM6DSV16X_SAMPLES_TO_DISCARD;
+
 	return 0;
 }
 
@@ -299,7 +311,7 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
-	num = fifo_status.fifo_level;
+	num = fifo_status.fifo_level - sensor.nb_samples_to_discard;
 
 	if (sensor.state != LSM6DSV16X_CALIBRATION_SETTLING) {
 		LOG_DBG("Received %d samples from FIFO.", num);
@@ -310,6 +322,12 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
         /* Read FIFO sensor value */
         lsm6dsv16x_fifo_out_raw_get(&sensor.dev_ctx, &f_data);
+
+		if (sensor.nb_samples_to_discard) {
+			sensor.nb_samples_to_discard--;
+			continue;
+		}
+
 		if (sensor.state == LSM6DSV16X_RECORDING)
 		{
 			_data_handler_recording(&f_data);

@@ -29,6 +29,7 @@ typedef struct {
 	uint8_t whoamI;
 	lsm6dsv16x_cb_t callbacks;
 	lsm6dsv16x_state_t state;
+	uint8_t nb_samples_to_discard;
 } lsm6dsv16x_sensor_t;
 
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb);

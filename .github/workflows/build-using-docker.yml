@@ -6,7 +6,7 @@ on:
 jobs:
   build-and-test-in-docker:
     runs-on: ubuntu-22.04
-    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:v2.6.99
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:v2.7.0
     defaults:
       run:
         # Bash shell is needed to set toolchain related environment variables in docker container
@@ -16,25 +16,25 @@ jobs:
       - name: Checkout repository with example application
         uses: actions/checkout@v4
         with:
-          path: example-application
+          path: xiao-ble-lsm6dsv16x.git
 
       - name: Prepare west project
         run: |
-          west init -l example-application
+          west init -l xiao-ble-lsm6dsv16x.git
           west update -o=--depth=1 -n
 
       - name: Build firmware
-        working-directory: example-application
+        working-directory: xiao-ble-lsm6dsv16x.git
         run: |
-          west twister -T app -v --inline-logs --integration
+          west build -b xiao_ble/nrf52840/sense app -- -DEXTRA_CONF_FILE="debug.conf overlay_usb_mass_storage.conf overlay_smp_bt.conf"
 
       - name: Store hex files
         uses: actions/upload-artifact@v4
         with:
           name: built-applications
-          path: example-application/twister-out/**/zephyr/zephyr.hex
+          path: xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.uf2
 
       - name: Twister Tests
-        working-directory: example-application
+        working-directory: xiao-ble-lsm6dsv16x.git
         run: |
           west twister -T tests -v --inline-logs --integration
