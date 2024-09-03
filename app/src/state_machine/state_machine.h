@@ -6,12 +6,14 @@
 typedef enum {
     XIAO_EVENT_START_RECORDING = BIT(0),
     XIAO_EVENT_STOP_RECORDING = BIT(1),
+    XIAO_EVENT_START_CALIBRATION = BIT(2),
+    XIAO_EVENT_STOP_CALIBRATION = BIT(3),
 } xiao_event_t;
 
 /* List of states */
-typedef enum xiao_state { IDLE, RECORDING } xiao_state_t;
+typedef enum xiao_state { IDLE, RECORDING, CALIBRATING } xiao_state_t;
 
-int state_machine_init(void);
+int state_machine_init(xiao_state_t starting_state);
 int state_machine_run(void);
 int state_machine_post_event(xiao_event_t event);
 xiao_state_t state_machine_current_state(void);

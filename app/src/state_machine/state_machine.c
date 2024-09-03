@@ -37,6 +37,8 @@ static void idle_run(void *o)
     /* Change states on Button Press Event */
     if (s->events & XIAO_EVENT_START_RECORDING) {
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING]);
+    } else if (s->events & XIAO_EVENT_START_CALIBRATION) {
+        smf_set_state(SMF_CTX(&s_obj), &xiao_states[CALIBRATING]);
     } else {
         LOG_WRN("Unhandled event in IDLE state.");
     }
@@ -51,7 +53,7 @@ static void recording_entry(void *o)
 	if (res < 0) {
 		LOG_ERR("Unable to create session (%i)", res);
 	}
-    lsm6dsv16x_start_acquisition();
+    lsm6dsv16x_start_acquisition(false);
 }
 
 static void recording_run(void *o)
@@ -75,6 +77,31 @@ static void recording_exit(void *o)
 	}
 }
 
+/* State CALIBRATING */
+static void calibrating_entry(void *o)
+{
+    LOG_INF("Entering CALIBRATING state.");
+    current_state = CALIBRATING;
+	lsm6dsv16x_start_calibration();
+}
+
+static void calibrating_run(void *o)
+{
+    struct s_object *s = (struct s_object *)o;
+
+    /* Change states on Button Press Event */
+    if (s->events & XIAO_EVENT_STOP_CALIBRATION) {
+        smf_set_state(SMF_CTX(&s_obj), &xiao_states[IDLE]);
+    } else {
+        LOG_WRN("Unhandled event in CALIBRATING state.");
+    }
+}
+
+static void calibrating_exit(void *o)
+{
+	lsm6dsv16x_stop_calibration();
+}
+
 xiao_state_t state_machine_current_state(void) {
     return current_state;
 }
@@ -83,6 +110,7 @@ xiao_state_t state_machine_current_state(void) {
 static const struct smf_state xiao_states[] = {
     [IDLE] = SMF_CREATE_STATE(idle_entry, idle_run, NULL, NULL, NULL),
     [RECORDING] = SMF_CREATE_STATE(recording_entry, recording_run, recording_exit, NULL, NULL),
+    [CALIBRATING] = SMF_CREATE_STATE(calibrating_entry, calibrating_run, calibrating_exit, NULL, NULL),
 };
 
 int state_machine_post_event(xiao_event_t event)
@@ -93,13 +121,13 @@ int state_machine_post_event(xiao_event_t event)
 }
 
 /* Initialize the state machine */
-int state_machine_init(void)
+int state_machine_init(xiao_state_t starting_state)
 {
     /* Initialize the event */
     k_event_init(&s_obj.smf_event);
 
     /* Set initial state */
-    smf_set_initial(SMF_CTX(&s_obj), &xiao_states[IDLE]);
+    smf_set_initial(SMF_CTX(&s_obj), &xiao_states[starting_state]);
 
     return 0;
 }

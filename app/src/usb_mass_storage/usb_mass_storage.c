@@ -14,7 +14,18 @@ LOG_MODULE_REGISTER(mass_storage, CONFIG_APP_LOG_LEVEL);
 
 static struct fs_mount_t fs_mnt;
 struct fs_file_t current_session_file;
+static struct fs_file_t calibration_file;
 static int current_session_nb = 0;
+
+struct fs_file_t* usb_mass_storage_get_session_file_p()
+{
+	return &current_session_file;
+}
+
+struct fs_file_t* usb_mass_storage_get_calibration_file_p()
+{
+	return &calibration_file;
+}
 
 static int setup_flash(struct fs_mount_t *mnt)
 {
@@ -52,7 +63,7 @@ static int mount_app_fs(struct fs_mount_t *mnt)
 
 	mnt->type = FS_FATFS;
 	mnt->fs_data = &fat_fs;
-	mnt->mnt_point = "/NAND:";
+	mnt->mnt_point = MOUNT_POINT;
 
 	rc = fs_mount(mnt);
 
@@ -164,41 +175,79 @@ int usb_mass_storage_lsdir(const char *path)
 	return rc;
 }
 
-int usb_mass_storage_create_file(const char *path, const char *filename){
+int usb_mass_storage_create_file(const char *path, const char *filename, struct fs_file_t *f, bool keep_open){
 	char file_path[128];
 	uint8_t base = 0;
 	struct fs_mount_t *mp = &fs_mnt;
-	struct fs_file_t file;
 
 	if (path == NULL) {
 		memcpy(file_path, mp->mnt_point, strlen(mp->mnt_point));
 		base = strlen(mp->mnt_point);
 	} else {
-		memcpy(file_path, path, strlen(path));
+		base = strlen(path);
 		if (path[strlen(path) - 1] == '/') {
-			file_path[strlen(path) - 1] = 0;
+			base = strlen(path) - 1;
 		}
-		base = strlen(file_path);
+		memcpy(file_path, path, base);
 	}
 
 	file_path[base++] = '/';
 	file_path[base] = 0;
 
 	strcat(file_path, filename);
-	fs_file_t_init(&file);
+	fs_file_t_init(f);
 
-	int rc = fs_open(&file, file_path, FS_O_CREATE | FS_O_RDWR);
+	int rc = fs_open(f, file_path, FS_O_CREATE | FS_O_RDWR);
 	if (rc != 0) {
 		LOG_ERR("Failed to create file %s (%i)", file_path, rc);
 		return rc;
 	}
 
-	rc = fs_close(&file);
-	if (rc != 0) {
-		LOG_ERR("Failed to close file %s (%i)", file_path, rc);
-		return rc;
+	if (!keep_open) {
+		rc = fs_close(f);
+		if (rc != 0) {
+			LOG_ERR("Failed to close file %s (%i)", file_path, rc);
+			return rc;
+		}
 	}
 
+	return 0;
+}
+
+int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, bool erase_content)
+{
+	int res;
+	if (erase_content)
+	{
+		res = fs_truncate(f, 0);
+		if (res != 0)
+		{
+			LOG_ERR("Error truncating calibration file (%i)", res);
+		}
+
+	}
+
+	res = fs_write(f, data, strlen(data)); // Write data to corresponding SD file.
+	if (res < 0) {
+		LOG_ERR("Failed to write data to file (%i)", res);
+		return res;
+	}
+	if (res < len)
+	{
+		LOG_WRN("The data has not been properly written to the file (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+int usb_mass_storage_close_file(struct fs_file_t *f)
+{
+	int res = fs_close(f);
+	if (res != 0) {
+		LOG_WRN("Unable to close file (%i)", res);
+		return res;
+	}
 	return 0;
 }
 
@@ -314,9 +363,7 @@ int usb_mass_storage_create_session()
 		return res;
 	}
 
-	fs_file_t_init(&current_session_file);
-	strcat(&path[base], "/"SESSION_FILE_NAME SESSION_FILE_EXTENSION);
-	res = fs_open(&current_session_file, path, FS_O_RDWR | FS_O_CREATE);
+	res = usb_mass_storage_create_file(path, SESSION_FILE_NAME SESSION_FILE_EXTENSION, &current_session_file, true);
 	if (res != 0) {
 		LOG_ERR("Failed to create data_file %s (%i)", path, res);
 		return res;
@@ -353,6 +400,57 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 		LOG_WRN("The data has not been properly written to the session (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
 		return -ENOMEM;
 	}
+
+	return 0;
+}
+
+int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *z)
+{
+	struct fs_dirent file_info;
+	int ret = fs_stat(MOUNT_POINT "/" CALIBRATION_FILE_NAME, &file_info);
+	if (ret) {
+		LOG_ERR("Failed to get calibration file info (%i)", ret);
+		return ret;
+	}
+
+	if (file_info.size != CALIBRATION_FILE_SIZE)
+	{
+		LOG_ERR("Calibration file is not the right size. Expected %u, got %u", CALIBRATION_FILE_SIZE, file_info.size);
+		return -ENOENT;
+	}
+
+	struct fs_file_t f;
+	char f_path[] = MOUNT_POINT "/" CALIBRATION_FILE_NAME;
+	fs_file_t_init(&f);
+	ret = fs_open(&f, f_path, FS_O_READ);
+	if (ret != 0) {
+		LOG_ERR("Failed to open file %s (%i)", f_path, ret);
+		return ret;
+	}
+
+	char file_content[CALIBRATION_FILE_SIZE];
+	int size_read = fs_read(&f, file_content, CALIBRATION_FILE_SIZE);
+	if (size_read != CALIBRATION_FILE_SIZE && size_read >= 0)
+	{
+		LOG_ERR("Calibration file contents read improperly. Expected %u bytes, got %i", CALIBRATION_FILE_SIZE, size_read);
+		return -ENOENT;
+	}
+	else if (size_read < 0)
+	{
+		LOG_ERR("Failed to read calibration file %i", size_read);
+		return size_read;
+	}
+
+	char xf[CALIBRATION_DATA_SIZE + 1], yf[CALIBRATION_DATA_SIZE + 1], zf[CALIBRATION_DATA_SIZE + 1];
+	memcpy(xf, &file_content[CALIBRATION_DATA_X_POSITION], CALIBRATION_DATA_SIZE);
+	xf[CALIBRATION_DATA_SIZE] = 0;
+	*x = strtof(xf, NULL);
+	memcpy(yf, &file_content[CALIBRATION_DATA_Y_POSITION], CALIBRATION_DATA_SIZE);
+	yf[CALIBRATION_DATA_SIZE] = 0;
+	*y = strtof(yf, NULL);
+	memcpy(zf, &file_content[CALIBRATION_DATA_Z_POSITION], CALIBRATION_DATA_SIZE);
+	z[CALIBRATION_DATA_SIZE] = 0;
+	*z = strtof(zf, NULL);
 
 	return 0;
 }

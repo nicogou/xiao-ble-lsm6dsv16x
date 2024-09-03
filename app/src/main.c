@@ -128,6 +128,33 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 	LOG_DBG("Received game rotation: x=%f, y=%f, z=%f, w=%f", (double)x, (double)y, (double)z, (double)w);
 }
 
+static void calib_res_cb(float_t x, float_t y, float_t z)
+{
+	LOG_INF("Calibration succeeded. Gbias x: %f y: %f z: %f", (double)x, (double)y, (double)z);
+	int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
+	if (res != 0)
+	{
+		LOG_ERR("Error creating calibration file (%i)", res);
+	} else {
+		char txt[CALIBRATION_FILE_SIZE];
+		sprintf(txt, "x:%+3.2f\ny:%+3.2f\nz:%+3.2f", (double)x, (double)y, (double)z);
+		res = usb_mass_storage_write_to_file(txt, strlen(txt), usb_mass_storage_get_calibration_file_p(), true);
+		if (res)
+		{
+			LOG_ERR("Failed to write to cal file (%i)", res);
+		}
+		res = usb_mass_storage_close_file(usb_mass_storage_get_calibration_file_p());
+		if (res)
+		{
+			LOG_ERR("Failed to close cal file (%i)", res);
+		}
+	}
+
+	lsm6dsv16x_set_gbias(x, y, z);
+
+	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
+}
+
 int main(void)
 {
 	int ret;
@@ -141,9 +168,12 @@ int main(void)
 		.lsm6dsv16x_gbias_sample_cb = gbias_received_cb,
 		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
+		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
 	};
 
 	lsm6dsv16x_init(callbacks);
+
+	xiao_state_t starting_state = IDLE;
 
 #if CONFIG_USB_MASS_STORAGE
 	ret = usb_mass_storage_init();
@@ -154,11 +184,27 @@ int main(void)
 	}
 
 	LOG_INF("The device is put in USB mass storage mode.");
+
+	float x, y, z;
+	ret = usb_mass_storage_check_calibration_file_contents(&x, &y, &z);
+	if (ret == -ENOENT) {
+		// No calibration file present, or it has the wrong size, trigger calibration.
+		LOG_WRN("Correct calibration file not found, triggering calibration");
+		starting_state = CALIBRATING;
+	} else if (ret != 0) {
+		// Something else went wrong when reading calibration file
+		LOG_ERR("Failed to check calibration file (%i)", ret);
+	} else {
+		// Calibration file has been read properly.
+		//LOG_DBG("x: %+3.2f - y: %+3.2f - z: %+3.2f", (double)x, (double)y, (double)z);
+		lsm6dsv16x_set_gbias(x, y, z);
+	}
+
 #endif
 
 	start_smp_bluetooth_adverts();
 
-	state_machine_init();
+	state_machine_init(starting_state);
 
 	return state_machine_run();
 }
