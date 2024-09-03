@@ -156,6 +156,8 @@ static void calib_res_cb(float_t x, float_t y, float_t z)
 		}
 	}
 
+	lsm6dsv16x_set_gbias(x, y, z);
+
 	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
 }
 

@@ -36,48 +36,97 @@ static void _calibration_timer_cb(struct k_timer *dummy)
 
 K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
 
-int lsm6dsv16x_start_acquisition()
+int lsm6dsv16x_start_acquisition(bool enable_gbias)
 {
 	lsm6dsv16x_pin_int_route_t pin_int;
 	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp;
+	int ret;
 
 	/* Enable Block Data Update */
-	lsm6dsv16x_block_data_update_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+	ret = lsm6dsv16x_block_data_update_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_block_data_update_set (%i)", ret);
+	}
 	/* Set full scale */
-	lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, LSM6DSV16X_2g);
-	lsm6dsv16x_gy_full_scale_set(&sensor.dev_ctx, LSM6DSV16X_2000dps);
+	ret = lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, LSM6DSV16X_2g);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_xl_full_scale_set (%i)", ret);
+	}
+	ret = lsm6dsv16x_gy_full_scale_set(&sensor.dev_ctx, LSM6DSV16X_2000dps);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_gy_full_scale_set (%i)", ret);
+	}
 
 	/*
 	* Set FIFO watermark (number of unread sensor data TAG + 6 bytes
 	* stored in FIFO) to FIFO_WATERMARK samples
 	*/
-	lsm6dsv16x_fifo_watermark_set(&sensor.dev_ctx, FIFO_WATERMARK);
+	ret = lsm6dsv16x_fifo_watermark_set(&sensor.dev_ctx, FIFO_WATERMARK);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_fifo_watermark_set (%i)", ret);
+	}
 
 	/* Set FIFO batch of sflp data */
 	fifo_sflp.game_rotation = 1;
 	fifo_sflp.gravity = 1;
-	fifo_sflp.gbias = 1;
-	lsm6dsv16x_fifo_sflp_batch_set(&sensor.dev_ctx, fifo_sflp);
+	fifo_sflp.gbias = enable_gbias;
+	ret = lsm6dsv16x_fifo_sflp_batch_set(&sensor.dev_ctx, fifo_sflp);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_fifo_sflp_batch_set (%i)", ret);
+	}
 
 	/* Set FIFO batch XL/Gyro ODR to 60Hz */
-	lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
-	lsm6dsv16x_fifo_gy_batch_set(&sensor.dev_ctx, LSM6DSV16X_GY_BATCHED_AT_60Hz);
+	ret = lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_fifo_xl_batch_set (%i)", ret);
+	}
+	ret = lsm6dsv16x_fifo_gy_batch_set(&sensor.dev_ctx, LSM6DSV16X_GY_BATCHED_AT_60Hz);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_fifo_gy_batch_set (%i)", ret);
+	}
 	/* Set FIFO mode to Stream mode (aka Continuous Mode) */
-	lsm6dsv16x_fifo_mode_set(&sensor.dev_ctx, LSM6DSV16X_STREAM_MODE);
+	ret = lsm6dsv16x_fifo_mode_set(&sensor.dev_ctx, LSM6DSV16X_STREAM_MODE);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_fifo_mode_set (%i)", ret);
+	}
 
 	pin_int.fifo_th = PROPERTY_ENABLE;
-	lsm6dsv16x_pin_int1_route_set(&sensor.dev_ctx, &pin_int);
+	ret = lsm6dsv16x_pin_int1_route_set(&sensor.dev_ctx, &pin_int);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_pin_int1_route_set (%i)", ret);
+	}
 	//lsm6dsv16x_pin_int2_route_set(&sensor.dev_ctx, &pin_int);
 
 	/* Set Output Data Rate */
-	lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
-	lsm6dsv16x_gy_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
-	lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
-	lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_1);
-	lsm6dsv16x_timestamp_set(&sensor.dev_ctx, PROPERTY_ENABLE);
-	lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+	ret = lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_xl_data_rate_set (%i)", ret);
+	}
+	ret = lsm6dsv16x_gy_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_gy_data_rate_set (%i)", ret);
+	}
+	ret = lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_sflp_data_rate_set (%i)", ret);
+	}
+	ret = lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_1);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_fifo_timestamp_batch_set (%i)", ret);
+	}
+	ret = lsm6dsv16x_timestamp_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_timestamp_set (%i)", ret);
+	}
+	ret = lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_sflp_game_rotation_set (%i)", ret);
+	}
 
-	lsm6dsv16x_sflp_game_gbias_set(&sensor.dev_ctx, &gbias);
+	ret = lsm6dsv16x_sflp_game_gbias_set(&sensor.dev_ctx, &gbias);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_sflp_game_gbias_set (%i)", ret);
+	}
 
 	sensor.state = LSM6DSV16X_RECORDING;
 	return 0;
@@ -98,7 +147,7 @@ int lsm6dsv16x_stop_acquisition()
 
 int lsm6dsv16x_start_calibration()
 {
-	int res = lsm6dsv16x_start_acquisition();
+	int res = lsm6dsv16x_start_acquisition(true);
 	if (res != 0)
 	{
 		LOG_ERR("Error while starting the sensor");

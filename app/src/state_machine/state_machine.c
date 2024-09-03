@@ -53,7 +53,7 @@ static void recording_entry(void *o)
 	if (res < 0) {
 		LOG_ERR("Unable to create session (%i)", res);
 	}
-    lsm6dsv16x_start_acquisition();
+    lsm6dsv16x_start_acquisition(false);
 }
 
 static void recording_run(void *o)
