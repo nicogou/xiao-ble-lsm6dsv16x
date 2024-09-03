@@ -1,0 +1,11 @@
+# Copyright (c) 2021, Legrand North America, LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+config XIAO_SMP_BLUETOOTH
+	bool "Support for Xiao BLE Bluetooth library"
+	help
+	  This option enables the 'custom' library
+
+module = XIAO_SMP_BLUETOOTH
+module-str = XIAO_SMP_BLUETOOTH
+source "subsys/logging/Kconfig.template.log_config"
