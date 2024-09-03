@@ -123,7 +123,7 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 	}
 
 	 /* Restore default configuration */
-  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_RESTORE_CTRL_REGS);
+  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
 	do {
 		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
