@@ -1,5 +1,5 @@
 # LSM6DSV16X evaluation
- 
+
 <a href="https://nrfconnect.github.io/ncs-example-application">
   <img alt="Documentation" src="https://img.shields.io/badge/documentation-3D578C?logo=sphinx&logoColor=white">
 </a>
@@ -44,14 +44,14 @@ To build the application, run the following command:
 
 ```shell
 cd xiao-ble-lsm6dsv16x.git
-west build -b xiao_ble/nrf52840/sense app -- -DEXTRA_CONF_FILE=prj_usb_mass_storage.conf
+west build -b xiao_ble/nrf52840/sense app -- -DEXTRA_CONF_FILE="prj_usb_mass_storage.conf overlay_smp_bt.conf"
 ```
 
 A sample debug configuration is also provided. To apply it, run the following
 command:
 
 ```shell
-west build -b xiao_ble/nrf52840/sense app -- -DEXTRA_CONF_FILE="debug.conf prj_usb_mass_storage.conf"
+west build -b xiao_ble/nrf52840/sense app -- -DEXTRA_CONF_FILE="debug.conf prj_usb_mass_storage.conf overlay_smp_bt.conf"
 ```
 
 In order to flash the board, it needs to be in bootloader mode. To do this, quickly double press the RESET button present on the Xiao BLE Sense.

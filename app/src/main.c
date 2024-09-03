@@ -13,6 +13,7 @@
 #include <app_version.h>
 
 #include <app/lib/lsm6dsv16x.h>
+#include <app/lib/xiao_smp_bluetooth.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -161,6 +162,8 @@ int main(void)
 
 	LOG_INF("The device is put in USB mass storage mode.");
 #endif
+
+	start_smp_bluetooth_adverts();
 
 	state_machine_init();
 
