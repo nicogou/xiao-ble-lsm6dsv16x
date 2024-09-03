@@ -32,6 +32,7 @@ int lsm6dsv16x_start_acquisition()
 {
 	lsm6dsv16x_pin_int_route_t pin_int;
 	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp;
+	lsm6dsv16x_filt_settling_mask_t filt_settling_mask;
 
 	/* Enable Block Data Update */
 	lsm6dsv16x_block_data_update_set(&sensor.dev_ctx, PROPERTY_ENABLE);
@@ -68,6 +69,14 @@ int lsm6dsv16x_start_acquisition()
 	lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_1);
 	lsm6dsv16x_timestamp_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 	lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+
+	/* Mask accelerometer and gyroscope data until the settling of the sensors filter is completed */
+  	filt_settling_mask.drdy = PROPERTY_ENABLE;
+  	filt_settling_mask.irq_xl = PROPERTY_ENABLE;
+  	filt_settling_mask.irq_g = PROPERTY_ENABLE;
+  	lsm6dsv16x_filt_settling_mask_set(&sensor.dev_ctx, filt_settling_mask);
+
+	sensor.nb_samples_to_discard = CONFIG_LSM6DSV16X_SAMPLES_TO_DISCARD;
 
 	return 0;
 }
@@ -116,7 +125,7 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 	}
 
 	 /* Restore default configuration */
-  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_RESTORE_CTRL_REGS);
+  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
 	do {
 		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
@@ -130,7 +139,7 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
-	num = fifo_status.fifo_level;
+	num = fifo_status.fifo_level - sensor.nb_samples_to_discard;
 
 	LOG_DBG("Received %d samples from FIFO.", num);
 	while (num--) {
@@ -142,6 +151,11 @@ void lsm6dsv16x_irq(struct k_work *item) {
         datay = (int16_t *)&f_data.data[2];
         dataz = (int16_t *)&f_data.data[4];
         ts = (int32_t *)&f_data.data[0];
+
+		if (sensor.nb_samples_to_discard) {
+			sensor.nb_samples_to_discard--;
+			continue;
+		}
 
         switch (f_data.tag) {
 			case LSM6DSV16X_XL_NC_TAG:
