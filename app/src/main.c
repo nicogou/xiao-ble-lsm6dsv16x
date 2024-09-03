@@ -142,7 +142,7 @@ static void calib_res_cb(float_t x, float_t y, float_t z)
 	{
 		LOG_ERR("Error creating calibration file (%i)", res);
 	} else {
-		char txt[50];
+		char txt[CALIBRATION_FILE_SIZE];
 		sprintf(txt, "x:%+3.2f\ny:%+3.2f\nz:%+3.2f", (double)x, (double)y, (double)z);
 		res = usb_mass_storage_write_to_file(txt, strlen(txt), usb_mass_storage_get_calibration_file_p(), true);
 		if (res)
@@ -200,7 +200,8 @@ int main(void)
 		LOG_ERR("Failed to check calibration file (%i)", ret);
 	} else {
 		// Calibration file has been read properly.
-		LOG_DBG("x: %+3.2f - y: %+3.2f - z: %+3.2f", (double)x, (double)y, (double)z);
+		//LOG_DBG("x: %+3.2f - y: %+3.2f - z: %+3.2f", (double)x, (double)y, (double)z);
+		lsm6dsv16x_set_gbias(x, y, z);
 	}
 
 #endif

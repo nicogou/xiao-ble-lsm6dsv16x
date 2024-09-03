@@ -37,3 +37,4 @@ int lsm6dsv16x_start_acquisition();
 int lsm6dsv16x_stop_acquisition();
 int lsm6dsv16x_start_calibration();
 int lsm6dsv16x_stop_calibration();
+void lsm6dsv16x_set_gbias(float x, float y, float z);

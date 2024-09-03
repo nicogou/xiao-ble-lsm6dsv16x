@@ -8,6 +8,7 @@
 LOG_MODULE_REGISTER(lsm6dsv16x, CONFIG_LSM6DSV16X_LOG_LEVEL);
 
 static lsm6dsv16x_sensor_t sensor;
+static lsm6dsv16x_sflp_gbias_t gbias = {.gbias_x = 0, .gbias_y = 0, .gbias_z = 0};
 
 static int16_t *datax;
 static int16_t *datay;
@@ -76,6 +77,8 @@ int lsm6dsv16x_start_acquisition()
 	lsm6dsv16x_timestamp_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 	lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 
+	lsm6dsv16x_sflp_game_gbias_set(&sensor.dev_ctx, &gbias);
+
 	sensor.state = LSM6DSV16X_RECORDING;
 	return 0;
 }
@@ -112,6 +115,13 @@ int lsm6dsv16x_stop_calibration() {
 	return lsm6dsv16x_stop_acquisition();
 }
 
+void lsm6dsv16x_set_gbias(float x, float y, float z)
+{
+	gbias.gbias_x = x * 1000.0f;
+	gbias.gbias_y = y * 1000.0f;
+	gbias.gbias_z = z * 1000.0f;
+}
+
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 {
 	sensor.callbacks = cb;
@@ -144,7 +154,7 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 	}
 
 	 /* Restore default configuration */
-  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_RESTORE_CTRL_REGS);
+  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
 	do {
 		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
@@ -170,7 +180,10 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 
 		case LSM6DSV16X_GY_NC_TAG:
 			if (sensor.callbacks.lsm6dsv16x_gyro_sample_cb) {
-				(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(lsm6dsv16x_from_fs2000_to_mdps(*datax), lsm6dsv16x_from_fs2000_to_mdps(*datay), lsm6dsv16x_from_fs2000_to_mdps(*dataz));
+				float_t argx = lsm6dsv16x_from_fs2000_to_mdps(*datax) - (gbias.gbias_x) / 1000.0f;
+				float_t argy = lsm6dsv16x_from_fs2000_to_mdps(*datay) - (gbias.gbias_y) / 1000.0f;
+				float_t argz = lsm6dsv16x_from_fs2000_to_mdps(*dataz) - (gbias.gbias_z) / 1000.0f;
+				(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(argx, argy, argz);
 			}
 			break;
 
