@@ -26,7 +26,7 @@ jobs:
       - name: Build firmware
         working-directory: xiao-ble-lsm6dsv16x.git
         run: |
-          west build -b xiao_ble/nrf52840/sense app -- -DEXTRA_CONF_FILE="debug.conf prj_usb_mass_storage.conf"
+          west build -b xiao_ble/nrf52840/sense app -- -DEXTRA_CONF_FILE="debug.conf overlay_usb_mass_storage.conf overlay_smp_bt.conf"
 
       - name: Store hex files
         uses: actions/upload-artifact@v4
