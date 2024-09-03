@@ -159,7 +159,7 @@ int main(void)
 {
 	int ret;
 
-	LOG_INF("Zephyr Example Application %s", APP_VERSION_STRING);
+	LOG_INF("Xiao LSM6DSV16X Evaluation %s", APP_VERSION_STRING);
 
 	lsm6dsv16x_cb_t callbacks = {
 		.lsm6dsv16x_ts_sample_cb = ts_received_cb,
