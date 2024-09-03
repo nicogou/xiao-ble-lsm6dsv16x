@@ -76,6 +76,8 @@ int lsm6dsv16x_start_acquisition()
   	filt_settling_mask.irq_g = PROPERTY_ENABLE;
   	lsm6dsv16x_filt_settling_mask_set(&sensor.dev_ctx, filt_settling_mask);
 
+	sensor.nb_samples_to_discard = CONFIG_LSM6DSV16X_SAMPLES_TO_DISCARD;
+
 	return 0;
 }
 
@@ -137,7 +139,7 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
-	num = fifo_status.fifo_level;
+	num = fifo_status.fifo_level - sensor.nb_samples_to_discard;
 
 	LOG_DBG("Received %d samples from FIFO.", num);
 	while (num--) {
@@ -149,6 +151,11 @@ void lsm6dsv16x_irq(struct k_work *item) {
         datay = (int16_t *)&f_data.data[2];
         dataz = (int16_t *)&f_data.data[4];
         ts = (int32_t *)&f_data.data[0];
+
+		if (sensor.nb_samples_to_discard) {
+			sensor.nb_samples_to_discard--;
+			continue;
+		}
 
         switch (f_data.tag) {
 			case LSM6DSV16X_XL_NC_TAG:
