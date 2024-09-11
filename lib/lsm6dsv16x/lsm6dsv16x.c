@@ -10,11 +10,6 @@ LOG_MODULE_REGISTER(lsm6dsv16x, CONFIG_LSM6DSV16X_LOG_LEVEL);
 static lsm6dsv16x_sensor_t sensor;
 static lsm6dsv16x_sflp_gbias_t gbias = {.gbias_x = 0, .gbias_y = 0, .gbias_z = 0};
 
-static int16_t *datax;
-static int16_t *datay;
-static int16_t *dataz;
-static int32_t *ts;
-
 static struct k_work imu_work;
 
 // Interrupt 1 init
@@ -226,11 +221,10 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 {
 	float quat[4];
-
-	datax = (int16_t *)&f_data->data[0];
-	datay = (int16_t *)&f_data->data[2];
-	dataz = (int16_t *)&f_data->data[4];
-	ts = (int32_t *)&f_data->data[0];
+	int16_t *datax = (int16_t *)&f_data->data[0];
+	int16_t *datay = (int16_t *)&f_data->data[2];
+	int16_t *dataz = (int16_t *)&f_data->data[4];
+	int32_t *ts = (int32_t *)&f_data->data[0];
 
 	switch (f_data->tag) {
 		case LSM6DSV16X_XL_NC_TAG:
@@ -281,10 +275,9 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 
 static bool _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data, float_t* res)
 {
-	datax = (int16_t *)&f_data->data[0];
-	datay = (int16_t *)&f_data->data[2];
-	dataz = (int16_t *)&f_data->data[4];
-	ts = (int32_t *)&f_data->data[0];
+	int16_t *datax = (int16_t *)&f_data->data[0];
+	int16_t *datay = (int16_t *)&f_data->data[2];
+	int16_t *dataz = (int16_t *)&f_data->data[4];
 	bool handled = false;
 
 	switch (f_data->tag) {
@@ -308,6 +301,7 @@ void lsm6dsv16x_irq(struct k_work *item) {
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
 	float_t gbias_tmp[3];
+	bool res = false;
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
@@ -333,14 +327,15 @@ void lsm6dsv16x_irq(struct k_work *item) {
 			_data_handler_recording(&f_data);
 		} else if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING)
 		{
-			if (_data_handler_calibrating(&f_data, gbias_tmp))
+			res = _data_handler_calibrating(&f_data, gbias_tmp);
+			if (res)
 			{
 				break;
 			}
 		}
 	}
 
-	if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING && sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+	if (res && sensor.state == LSM6DSV16X_CALIBRATION_RECORDING && sensor.callbacks.lsm6dsv16x_calibration_result_cb)
 	{
 		lsm6dsv16x_stop_calibration();
 		(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
