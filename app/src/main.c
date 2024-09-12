@@ -130,14 +130,14 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 
 static void calib_res_cb(float_t x, float_t y, float_t z)
 {
-	LOG_INF("Calibration succeeded. Gbias x: %f y: %f z: %f", (double)x, (double)y, (double)z);
+	char txt[CALIBRATION_FILE_SIZE];
+	sprintf(txt, "x:%+07.2f\ny:%+07.2f\nz:%+07.2f", (double)x, (double)y, (double)z);
+	LOG_INF("Calibration succeeded. Gbias %s", txt);
 	int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
 	if (res != 0)
 	{
 		LOG_ERR("Error creating calibration file (%i)", res);
 	} else {
-		char txt[CALIBRATION_FILE_SIZE];
-		sprintf(txt, "x:%+3.2f\ny:%+3.2f\nz:%+3.2f", (double)x, (double)y, (double)z);
 		res = usb_mass_storage_write_to_file(txt, strlen(txt), usb_mass_storage_get_calibration_file_p(), true);
 		if (res)
 		{
