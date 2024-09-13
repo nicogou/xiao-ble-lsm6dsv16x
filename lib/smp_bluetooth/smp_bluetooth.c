@@ -4,7 +4,7 @@
 #include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(smp_bt_sample, CONFIG_XIAO_SMP_BLUETOOTH_LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(smp_bt, CONFIG_XIAO_SMP_BLUETOOTH_LOG_LEVEL);
 
 #define BT_UUID_SMP_SERVICE_VAL \
 	BT_UUID_128_ENCODE(0x8D53DC1D, 0x1DB7, 0x4CD3, 0x868B, 0x8A527460AA84)
