@@ -455,12 +455,35 @@ int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *
 	return 0;
 }
 
+static void udc_status_cb(enum usb_dc_status_code status, const uint8_t *param) {
+	switch (status)
+	{
+	case USB_DC_CONNECTED:
+		LOG_INF("My USB device connected");
+		break;
+
+	case USB_DC_DISCONNECTED:
+		LOG_INF("My USB device disconnected");
+		break;
+
+	case USB_DC_CONFIGURED:
+	case USB_DC_SUSPEND:
+	case USB_DC_RESUME:
+	case USB_DC_ERROR:
+	case USB_DC_RESET:
+	case USB_DC_UNKNOWN:
+
+	default:
+		break;
+	}
+}
+
 int usb_mass_storage_init() {
 
 	setup_disk();
 
 #if CONFIG_USB_DEVICE_INITIALIZE_AT_BOOT == 0
-	int ret = usb_enable(NULL);
+	int ret = usb_enable(udc_status_cb);
 
 	if (ret != 0) {
 		LOG_ERR("Failed to enable USB (%i)", ret);
