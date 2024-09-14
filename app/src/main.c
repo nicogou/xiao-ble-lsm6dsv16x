@@ -106,7 +106,7 @@ static void gbias_received_cb(float_t x, float_t y, float_t z)
 	l.gbias_y = y;
 	l.gbias_z = z;
 	l.gbias_updated = true;
-	LOG_DBG("Received gyroscope bias: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
+	//LOG_DBG("Received gyroscope bias: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
 }
 
 static void gravity_received_cb(float_t x, float_t y, float_t z)
@@ -115,7 +115,7 @@ static void gravity_received_cb(float_t x, float_t y, float_t z)
 	l.gravity_y = y;
 	l.gravity_z = z;
 	l.gravity_updated = true;
-	LOG_DBG("Received gravity: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
+	//LOG_DBG("Received gravity: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
 }
 
 static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
@@ -125,7 +125,7 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 	l.game_rot_z = z;
 	l.game_rot_w = w;
 	l.game_rot_updated = true;
-	LOG_DBG("Received game rotation: x=%f, y=%f, z=%f, w=%f", (double)x, (double)y, (double)z, (double)w);
+	//LOG_DBG("Received game rotation: x=%f, y=%f, z=%f, w=%f", (double)x, (double)y, (double)z, (double)w);
 }
 
 static void calib_res_cb(float_t x, float_t y, float_t z)

@@ -17,6 +17,8 @@ struct fs_file_t current_session_file;
 static struct fs_file_t calibration_file;
 static int current_session_nb = 0;
 
+K_SEM_DEFINE(write_sem, 1, 1);
+
 struct fs_file_t* usb_mass_storage_get_session_file_p()
 {
 	return &current_session_file;
@@ -381,15 +383,29 @@ int usb_mass_storage_create_session()
 }
 
 int usb_mass_storage_end_current_session(){
+	// Take a semaphore in order to prevent end session to happen during a write.
+	if (k_sem_take(&write_sem, K_FOREVER) != 0) {
+        LOG_ERR("Semaphore not available!");
+		return -EINPROGRESS;
+    }
+
 	int res = fs_close(&current_session_file);
 	if (res != 0) {
 		LOG_WRN("Unable to close acc file (%i)", res);
 		return res;
 	}
+
+	k_sem_give(&write_sem);
 	return 0;
 }
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
+	// Take a semaphore in order to prevent end session to happen during a write.
+	if (k_sem_take(&write_sem, K_MSEC(50)) != 0) {
+        LOG_ERR("Unable to write data, semaphore is unavailable!");
+		return -EINPROGRESS;
+    }
+
 	int res = fs_write(&current_session_file, data, strlen(data)); // Write data to corresponding SD file.
 	if (res < 0) {
 		LOG_ERR("Failed to write data to current session file (%i)", res);
@@ -400,6 +416,8 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 		LOG_WRN("The data has not been properly written to the session (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
 		return -ENOMEM;
 	}
+
+	k_sem_give(&write_sem); // Give the semaphore back so that app can end session correctly.
 
 	return 0;
 }
