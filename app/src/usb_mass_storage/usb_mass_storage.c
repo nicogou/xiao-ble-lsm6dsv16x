@@ -210,6 +210,12 @@ int usb_mass_storage_create_file(const char *path, const char *filename, struct 
 
 int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, bool erase_content)
 {
+	// Take a semaphore in order to prevent end session to happen during a write.
+	if (k_sem_take(&write_sem, K_NO_WAIT) != 0) {
+        LOG_ERR("Unable to write data, semaphore is unavailable!");
+		return -EINPROGRESS;
+    }
+
 	int res;
 	if (erase_content)
 	{
@@ -231,6 +237,8 @@ int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, 
 		LOG_WRN("The data has not been properly written to the file (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
 		return -ENOMEM;
 	}
+
+	k_sem_give(&write_sem); // Give the semaphore back so that app can end session correctly.
 
 	return 0;
 }
@@ -392,24 +400,20 @@ int usb_mass_storage_end_current_session(){
 }
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
-	// Take a semaphore in order to prevent end session to happen during a write.
-	if (k_sem_take(&write_sem, K_NO_WAIT) != 0) {
-        LOG_ERR("Unable to write data, semaphore is unavailable!");
-		return -EINPROGRESS;
-    }
-
-	int res = fs_write(&current_session_file, data, strlen(data)); // Write data to corresponding SD file.
-	if (res < 0) {
-		LOG_ERR("Failed to write data to current session file (%i)", res);
-		return res;
-	}
-	if (res < len)
+	static char wr_buffer[SESSION_WR_BUFFER_SIZE];
+	static size_t wr_buffer_len = 0;
+	memcpy(&wr_buffer[wr_buffer_len], data, len);
+	wr_buffer_len += len;
+	if (wr_buffer_len >= SESSION_WR_BUFFER_THRESHOLD)
 	{
-		LOG_WRN("The data has not been properly written to the session (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
-		return -ENOMEM;
+		int res = usb_mass_storage_write_to_file(wr_buffer, wr_buffer_len, &current_session_file, false);
+		if (res < 0) {
+			LOG_ERR("Failed to write data to current session file (%i)", res);
+			return res;
+		}
+		wr_buffer_len = 0;
+		memset(wr_buffer, 0, SESSION_WR_BUFFER_SIZE);
 	}
-
-	k_sem_give(&write_sem); // Give the semaphore back so that app can end session correctly.
 
 	return 0;
 }

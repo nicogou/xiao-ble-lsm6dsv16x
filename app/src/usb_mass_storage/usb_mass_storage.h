@@ -21,6 +21,9 @@
 #define CALIBRATION_DATA_Y_POSITION	12
 #define CALIBRATION_DATA_Z_POSITION	22
 
+#define SESSION_WR_BUFFER_SIZE 1024
+#define SESSION_WR_BUFFER_THRESHOLD 256
+
 int usb_mass_storage_init();
 int usb_mass_storage_lsdir(const char *path);
 int usb_mass_storage_create_file(const char *path, const char *filename, struct fs_file_t *f, bool keep_open);
