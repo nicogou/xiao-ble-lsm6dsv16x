@@ -59,8 +59,11 @@ static void print_line_if_needed(){
 		l.gyro_updated = false;
 		l.ts_updated = false;
 
-		sprintf(txt, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
-		int res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
+		int res = snprintf(txt, 100, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+		if (res < 0) {
+			LOG_ERR("Encoding error happened (%i)", res);
+		}
+		res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
 
 		if (res < 0) {
 			LOG_ERR("Unable to write to session file, ending session");
@@ -106,7 +109,7 @@ static void gbias_received_cb(float_t x, float_t y, float_t z)
 	l.gbias_y = y;
 	l.gbias_z = z;
 	l.gbias_updated = true;
-	LOG_DBG("Received gyroscope bias: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
+	//LOG_DBG("Received gyroscope bias: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
 }
 
 static void gravity_received_cb(float_t x, float_t y, float_t z)
@@ -115,7 +118,7 @@ static void gravity_received_cb(float_t x, float_t y, float_t z)
 	l.gravity_y = y;
 	l.gravity_z = z;
 	l.gravity_updated = true;
-	LOG_DBG("Received gravity: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
+	//LOG_DBG("Received gravity: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
 }
 
 static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
@@ -125,13 +128,16 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 	l.game_rot_z = z;
 	l.game_rot_w = w;
 	l.game_rot_updated = true;
-	LOG_DBG("Received game rotation: x=%f, y=%f, z=%f, w=%f", (double)x, (double)y, (double)z, (double)w);
+	//LOG_DBG("Received game rotation: x=%f, y=%f, z=%f, w=%f", (double)x, (double)y, (double)z, (double)w);
 }
 
 static void calib_res_cb(float_t x, float_t y, float_t z)
 {
-	char txt[CALIBRATION_FILE_SIZE];
-	sprintf(txt, "x:%+07.2f\ny:%+07.2f\nz:%+07.2f", (double)x, (double)y, (double)z);
+	char txt[CALIBRATION_FILE_SIZE + 1]; // Leave room for a terminating NULL character.
+	int cnt = snprintf(txt, CALIBRATION_FILE_SIZE + 1, "x:%+07.2f\ny:%+07.2f\nz:%+07.2f", (double)x, (double)y, (double)z);
+	if (cnt != CALIBRATION_FILE_SIZE) {
+		LOG_ERR("Calibration file data is not the correct length! Expected %u, got %i", CALIBRATION_FILE_SIZE, cnt);
+	}
 	LOG_INF("Calibration succeeded. Gbias %s", txt);
 	int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
 	if (res != 0)

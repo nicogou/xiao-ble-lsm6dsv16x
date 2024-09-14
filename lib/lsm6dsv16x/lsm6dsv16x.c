@@ -305,7 +305,7 @@ void lsm6dsv16x_irq(struct k_work *item) {
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
-	num = fifo_status.fifo_level - sensor.nb_samples_to_discard;
+	num = fifo_status.fifo_level;
 
 	if (sensor.state != LSM6DSV16X_CALIBRATION_SETTLING) {
 		LOG_DBG("Received %d samples from FIFO.", num);

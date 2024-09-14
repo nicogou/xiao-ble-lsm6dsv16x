@@ -13,9 +13,12 @@
 LOG_MODULE_REGISTER(mass_storage, CONFIG_APP_LOG_LEVEL);
 
 static struct fs_mount_t fs_mnt;
-struct fs_file_t current_session_file;
+static struct fs_file_t current_session_file;
+static char current_session_path[MAX_PATH];
 static struct fs_file_t calibration_file;
 static int current_session_nb = 0;
+
+K_SEM_DEFINE(write_sem, 1, 1);
 
 struct fs_file_t* usb_mass_storage_get_session_file_p()
 {
@@ -195,6 +198,11 @@ int usb_mass_storage_create_file(const char *path, const char *filename, struct 
 	file_path[base] = 0;
 
 	strcat(file_path, filename);
+	base += strlen(filename);
+	if (f == &current_session_file) {
+		memcpy(current_session_path, file_path, base);
+	}
+
 	fs_file_t_init(f);
 
 	int rc = fs_open(f, file_path, FS_O_CREATE | FS_O_RDWR);
@@ -381,15 +389,29 @@ int usb_mass_storage_create_session()
 }
 
 int usb_mass_storage_end_current_session(){
+	// Take a semaphore in order to prevent end session to happen during a write.
+	if (k_sem_take(&write_sem, K_FOREVER) != 0) {
+        LOG_ERR("Semaphore not available!");
+		return -EINPROGRESS;
+    }
+
 	int res = fs_close(&current_session_file);
 	if (res != 0) {
 		LOG_WRN("Unable to close acc file (%i)", res);
 		return res;
 	}
+
+	k_sem_give(&write_sem);
 	return 0;
 }
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
+	// Take a semaphore in order to prevent end session to happen during a write.
+	if (k_sem_take(&write_sem, K_NO_WAIT) != 0) {
+        LOG_ERR("Unable to write data, semaphore is unavailable!");
+		return -EINPROGRESS;
+    }
+
 	int res = fs_write(&current_session_file, data, strlen(data)); // Write data to corresponding SD file.
 	if (res < 0) {
 		LOG_ERR("Failed to write data to current session file (%i)", res);
@@ -400,6 +422,8 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 		LOG_WRN("The data has not been properly written to the session (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
 		return -ENOMEM;
 	}
+
+	k_sem_give(&write_sem); // Give the semaphore back so that app can end session correctly.
 
 	return 0;
 }
@@ -455,12 +479,35 @@ int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *
 	return 0;
 }
 
+static void udc_status_cb(enum usb_dc_status_code status, const uint8_t *param) {
+	switch (status)
+	{
+	case USB_DC_CONNECTED:
+		LOG_INF("My USB device connected");
+		break;
+
+	case USB_DC_DISCONNECTED:
+		LOG_INF("My USB device disconnected");
+		break;
+
+	case USB_DC_CONFIGURED:
+	case USB_DC_SUSPEND:
+	case USB_DC_RESUME:
+	case USB_DC_ERROR:
+	case USB_DC_RESET:
+	case USB_DC_UNKNOWN:
+
+	default:
+		break;
+	}
+}
+
 int usb_mass_storage_init() {
 
 	setup_disk();
 
 #if CONFIG_USB_DEVICE_INITIALIZE_AT_BOOT == 0
-	int ret = usb_enable(NULL);
+	int ret = usb_enable(udc_status_cb);
 
 	if (ret != 0) {
 		LOG_ERR("Failed to enable USB (%i)", ret);

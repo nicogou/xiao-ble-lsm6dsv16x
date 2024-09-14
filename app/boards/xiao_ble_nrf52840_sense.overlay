@@ -14,9 +14,11 @@
 };
 
 / {
-   chosen {
-	   nordic,pm-ext-flash = &p25q16h;
-   };
+	chosen {
+		nordic,pm-ext-flash = &p25q16h;
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+	};
 
 	msc_disk0 {
 		compatible = "zephyr,flash-disk";
