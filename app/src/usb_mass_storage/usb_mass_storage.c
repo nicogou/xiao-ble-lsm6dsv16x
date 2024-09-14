@@ -13,7 +13,8 @@
 LOG_MODULE_REGISTER(mass_storage, CONFIG_APP_LOG_LEVEL);
 
 static struct fs_mount_t fs_mnt;
-struct fs_file_t current_session_file;
+static struct fs_file_t current_session_file;
+static char current_session_path[MAX_PATH];
 static struct fs_file_t calibration_file;
 static int current_session_nb = 0;
 
@@ -197,6 +198,11 @@ int usb_mass_storage_create_file(const char *path, const char *filename, struct 
 	file_path[base] = 0;
 
 	strcat(file_path, filename);
+	base += strlen(filename);
+	if (f == &current_session_file) {
+		memcpy(current_session_path, file_path, base);
+	}
+
 	fs_file_t_init(f);
 
 	int rc = fs_open(f, file_path, FS_O_CREATE | FS_O_RDWR);
@@ -401,7 +407,7 @@ int usb_mass_storage_end_current_session(){
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
 	// Take a semaphore in order to prevent end session to happen during a write.
-	if (k_sem_take(&write_sem, K_MSEC(50)) != 0) {
+	if (k_sem_take(&write_sem, K_NO_WAIT) != 0) {
         LOG_ERR("Unable to write data, semaphore is unavailable!");
 		return -EINPROGRESS;
     }
