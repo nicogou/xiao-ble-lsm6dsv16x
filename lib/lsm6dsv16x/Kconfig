@@ -12,7 +12,7 @@ config LSM6DSV16X_CALIBRATION_SETTLING_TIME
 
 if LSM6DSV16X
 
-config SPI
+config I2C
 	default y
 
 config GPIO
