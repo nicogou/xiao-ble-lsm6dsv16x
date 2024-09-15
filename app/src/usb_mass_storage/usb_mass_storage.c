@@ -393,6 +393,23 @@ int usb_mass_storage_end_current_session(){
         LOG_ERR("Semaphore not available!");
 		return -EINPROGRESS;
     }
+	char read[SESSION_WR_BUFFER_THRESHOLD];
+
+	k_msleep(1000);
+
+	int size_read;
+	if (fs_seek(&current_session_file, 0, FS_SEEK_SET)){
+		LOG_ERR("error when seeking");
+	}
+	do {
+		size_read = fs_read(&current_session_file, read, SESSION_WR_BUFFER_THRESHOLD);
+		for (int ii = 0; ii < size_read; ii++) {
+			if (read[ii] == 0xFF) {
+				LOG_ERR("Corrupted data before closing file");
+				break;
+			}
+		}
+	} while (size_read == SESSION_WR_BUFFER_THRESHOLD);
 
 	int res = fs_close(&current_session_file);
 	if (res != 0) {
@@ -406,6 +423,7 @@ int usb_mass_storage_end_current_session(){
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
 	int res = 0;
+	char read[SESSION_WR_BUFFER_THRESHOLD];
 	memcpy(&session_wr_buffer[session_wr_buffer_len], data, len);
 	session_wr_buffer_len += len;
 	if (session_wr_buffer_len >= SESSION_WR_BUFFER_SIZE) {
@@ -421,6 +439,22 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 			LOG_ERR("Failed to write data to current session file (%i)", res);
 			return res;
 		}
+
+		res= fs_seek(&current_session_file, -SESSION_WR_BUFFER_THRESHOLD, FS_SEEK_END);
+		if (res) {
+			LOG_WRN("test");
+		}
+		int size_read = fs_read(&current_session_file, read, SESSION_WR_BUFFER_THRESHOLD);
+		if (strncmp(read, session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD) != 0){
+			LOG_ERR("Corrupted data");
+			LOG_HEXDUMP_ERR(read, SESSION_WR_BUFFER_THRESHOLD, "read");
+			LOG_HEXDUMP_ERR(session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD, "read");
+		}
+		res = fs_seek(&current_session_file, 0, FS_SEEK_END);
+		if (res) {
+			LOG_ERR("yoohoo");
+		}
+
 		char tmp[SESSION_WR_BUFFER_SIZE];
 		size_t s = session_wr_buffer_len - SESSION_WR_BUFFER_THRESHOLD;
 		memcpy(tmp, &session_wr_buffer[SESSION_WR_BUFFER_THRESHOLD], s);
