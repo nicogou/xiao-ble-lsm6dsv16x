@@ -18,6 +18,9 @@ static char current_session_path[MAX_PATH];
 static struct fs_file_t calibration_file;
 static int current_session_nb = 0;
 
+static char session_wr_buffer[SESSION_WR_BUFFER_SIZE];
+static size_t session_wr_buffer_len = 0;
+
 K_SEM_DEFINE(write_sem, 1, 1);
 
 struct fs_file_t* usb_mass_storage_get_session_file_p()
@@ -227,7 +230,7 @@ int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, 
 
 	}
 
-	res = fs_write(f, data, strlen(data)); // Write data to corresponding SD file.
+	res = fs_write(f, data, len); // Write data to corresponding SD file.
 	if (res < 0) {
 		LOG_ERR("Failed to write data to file (%i)", res);
 		return res;
@@ -336,6 +339,8 @@ static int get_session_nb(const char *path){
 int usb_mass_storage_create_session()
 {
 	struct fs_mount_t *mp = &fs_mnt;
+	memset(session_wr_buffer, 0, SESSION_WR_BUFFER_SIZE);
+	session_wr_buffer_len = 0;
 
 	char path[MAX_PATH];
 	int base = 0;
@@ -400,22 +405,31 @@ int usb_mass_storage_end_current_session(){
 }
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
-	static char wr_buffer[SESSION_WR_BUFFER_SIZE];
-	static size_t wr_buffer_len = 0;
-	memcpy(&wr_buffer[wr_buffer_len], data, len);
-	wr_buffer_len += len;
-	if (wr_buffer_len >= SESSION_WR_BUFFER_THRESHOLD)
+	int res = 0;
+	memcpy(&session_wr_buffer[session_wr_buffer_len], data, len);
+	session_wr_buffer_len += len;
+	if (session_wr_buffer_len >= SESSION_WR_BUFFER_SIZE) {
+		LOG_ERR("Write buffer is full, resetting buffer");
+		session_wr_buffer_len = 0;
+		return -E2BIG;
+	}
+
+	if (session_wr_buffer_len >= SESSION_WR_BUFFER_THRESHOLD)
 	{
-		int res = usb_mass_storage_write_to_file(wr_buffer, wr_buffer_len, &current_session_file, false);
+		res = usb_mass_storage_write_to_file(session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD, &current_session_file, false);
 		if (res < 0) {
 			LOG_ERR("Failed to write data to current session file (%i)", res);
 			return res;
 		}
-		wr_buffer_len = 0;
-		memset(wr_buffer, 0, SESSION_WR_BUFFER_SIZE);
+		char tmp[SESSION_WR_BUFFER_SIZE];
+		size_t s = session_wr_buffer_len - SESSION_WR_BUFFER_THRESHOLD;
+		memcpy(tmp, &session_wr_buffer[SESSION_WR_BUFFER_THRESHOLD], s);
+		memcpy(session_wr_buffer, tmp, s);
+		memset(&session_wr_buffer[SESSION_WR_BUFFER_THRESHOLD], 0, s);
+		session_wr_buffer_len -= SESSION_WR_BUFFER_THRESHOLD;
 	}
 
-	return 0;
+	return res;
 }
 
 int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *z)
