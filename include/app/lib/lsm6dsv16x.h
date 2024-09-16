@@ -33,7 +33,7 @@ typedef struct {
 } lsm6dsv16x_sensor_t;
 
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb);
-void lsm6dsv16x_irq(struct k_work *item);
+void lsm6dsv16x_int1_irq(struct k_work *item);
 int lsm6dsv16x_start_acquisition(bool enable_gbias);
 int lsm6dsv16x_stop_acquisition();
 int lsm6dsv16x_start_calibration();
