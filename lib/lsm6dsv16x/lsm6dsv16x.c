@@ -35,8 +35,6 @@ static struct gpio_callback imu_int_2_cb_data;
 
 void imu_int_2_cb(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-	LOG_DBG("Interrupt 2 called");
-
 	k_work_submit(&imu_int2_work);
     return;
 }
@@ -81,6 +79,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	}
 
 	/* Set FIFO batch of sflp data */
+	/*
 	fifo_sflp.game_rotation = 1;
 	fifo_sflp.gravity = 1;
 	fifo_sflp.gbias = enable_gbias;
@@ -88,6 +87,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_sflp_batch_set (%i)", ret);
 	}
+*/
 
 	/* Set FIFO batch XL/Gyro ODR to 60Hz */
 	ret = lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
@@ -99,6 +99,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 		LOG_ERR("lsm6dsv16x_fifo_gy_batch_set (%i)", ret);
 	}
 	/* Set FIFO mode to Stream mode (aka Continuous Mode) */
+/*
 	ret = lsm6dsv16x_fifo_mode_set(&sensor.dev_ctx, LSM6DSV16X_STREAM_MODE);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_mode_set (%i)", ret);
@@ -109,6 +110,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_pin_int1_route_set (%i)", ret);
 	}
+*/
 
 	/* Set Output Data Rate */
 	ret = lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
@@ -119,6 +121,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_gy_data_rate_set (%i)", ret);
 	}
+/*
 	ret = lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_sflp_data_rate_set (%i)", ret);
@@ -140,6 +143,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_sflp_game_gbias_set (%i)", ret);
 	}
+*/
 
 	sensor.state = LSM6DSV16X_RECORDING;
 	/* Mask accelerometer and gyroscope data until the settling of the sensors filter is completed */
@@ -150,6 +154,8 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_filt_settling_mask_set (%i)", ret);
 	}
+//	lsm6dsv16x_filt_xl_lp2_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+//	lsm6dsv16x_filt_xl_lp2_bandwidth_set(&sensor.dev_ctx, LSM6DSV16X_XL_STRONG);
 
 	qvar_mode.ah_qvar_en = 1;
 	ret = lsm6dsv16x_ah_qvar_mode_set(&sensor.dev_ctx, qvar_mode);
@@ -208,7 +214,6 @@ void lsm6dsv16x_set_gbias(float x, float y, float z)
 }
 
 void lsm6dsv16x_int2_irq(struct k_work *item) {
-	LOG_DBG("Work 2 is called");
 	lsm6dsv16x_all_sources_t all_sources;
 	int16_t data;
 
