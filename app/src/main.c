@@ -54,6 +54,7 @@ static struct line l = {
 
 static void print_line_if_needed(){
 	char txt[100];
+	char data_forwarded[100];
 	if (l.acc_updated && l.gyro_updated && l.ts_updated) {
 		l.acc_updated = false;
 		l.gyro_updated = false;
@@ -63,6 +64,13 @@ static void print_line_if_needed(){
 		if (res < 0) {
 			LOG_ERR("Encoding error happened (%i)", res);
 		}
+
+		res = snprintf(data_forwarded, 100, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+		if (res < 0) {
+			LOG_ERR("Encoding error happened for data forwarder (%i)", res);
+		}
+		printk(data_forwarded);
+
 		res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
 
 		if (res < 0) {
