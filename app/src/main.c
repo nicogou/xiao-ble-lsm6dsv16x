@@ -69,7 +69,7 @@ static void print_line_if_needed(){
 		if (res < 0) {
 			LOG_ERR("Encoding error happened for data forwarder (%i)", res);
 		}
-		printk(data_forwarded);
+		printk("%s", data_forwarded);
 
 		res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
 
