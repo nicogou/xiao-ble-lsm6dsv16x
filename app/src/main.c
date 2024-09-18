@@ -52,21 +52,25 @@ static struct line l = {
 	.game_rot_updated = false,
 };
 
+#define TXT_SIZE 200
+
 static void print_line_if_needed(){
-	char txt[100];
-	char data_forwarded[100];
-	if (l.acc_updated && l.gyro_updated && l.ts_updated) {
+	char txt[TXT_SIZE];
+	char data_forwarded[TXT_SIZE];
+	if (l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated) {
 		l.acc_updated = false;
 		l.gyro_updated = false;
 		l.ts_updated = false;
+		l.game_rot_updated = false;
+		l.gravity_updated = false;
 
-		int res = snprintf(txt, 100, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
-		if (res < 0) {
+		int res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+		if (res < 0 && res >= TXT_SIZE) {
 			LOG_ERR("Encoding error happened (%i)", res);
 		}
 
-		res = snprintf(data_forwarded, 100, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
-		if (res < 0) {
+		res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+		if (res < 0 && res >= TXT_SIZE) {
 			LOG_ERR("Encoding error happened for data forwarder (%i)", res);
 		}
 		printk("%s", data_forwarded);
@@ -117,7 +121,8 @@ static void gbias_received_cb(float_t x, float_t y, float_t z)
 	l.gbias_y = y;
 	l.gbias_z = z;
 	l.gbias_updated = true;
-	//LOG_DBG("Received gyroscope bias: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
+
+	print_line_if_needed();
 }
 
 static void gravity_received_cb(float_t x, float_t y, float_t z)
@@ -126,17 +131,19 @@ static void gravity_received_cb(float_t x, float_t y, float_t z)
 	l.gravity_y = y;
 	l.gravity_z = z;
 	l.gravity_updated = true;
-	//LOG_DBG("Received gravity: x=%f, y=%f, z=%f", (double)x, (double)y, (double)z);
+
+	print_line_if_needed();
 }
 
 static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 {
-	l.game_rot_x = x;
-	l.game_rot_y = y;
-	l.game_rot_z = z;
-	l.game_rot_w = w;
+	l.game_rot_x = 1000.0f * x;
+	l.game_rot_y = 1000.0f * y;
+	l.game_rot_z = 1000.0f * z;
+	l.game_rot_w = 1000.0f * w;
 	l.game_rot_updated = true;
-	//LOG_DBG("Received game rotation: x=%f, y=%f, z=%f, w=%f", (double)x, (double)y, (double)z, (double)w);
+
+	print_line_if_needed();
 }
 
 static void calib_res_cb(float_t x, float_t y, float_t z)
