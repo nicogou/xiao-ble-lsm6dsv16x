@@ -11,8 +11,9 @@
 
 / {
 	chosen {
-		zephyr,console = &uart0;
+		zephyr,console = &usb_cdc_acm_uart;
 		zephyr,shell-uart = &uart0;
+		zephyr,log-uart = &log_uarts;
 		zephyr,uart-mcumgr = &usb_cdc_acm_uart;
 		zephyr,bt-mon-uart = &usb_cdc_acm_uart;
 		zephyr,bt-c2h-uart = &usb_cdc_acm_uart;
@@ -21,6 +22,11 @@
 		zephyr,code-partition = &code_partition;
 		zephyr,ieee802154 = &ieee802154;
 		nordic,pm-ext-flash = &w25q128;
+	};
+
+	log_uarts: log_uarts {
+		compatible = "zephyr,log-uart";
+		uarts = <&uart0>; // Multiple UARTs can be used for LOGS here.
 	};
 
 	leds {
