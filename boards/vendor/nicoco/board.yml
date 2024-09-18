@@ -1,0 +1,7 @@
+board:
+  name: nicoco
+  vendor: vendor
+  socs:
+  - name: nrf52840
+    variants:
+    - name: 'sense'

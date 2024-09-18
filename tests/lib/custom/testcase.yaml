@@ -1,7 +1,7 @@
 common:
   tags: extensibility
   integration_platforms:
-    - custom_plank
+    - nicoco
     - qemu_cortex_m0
 tests:
   lib.custom: {}

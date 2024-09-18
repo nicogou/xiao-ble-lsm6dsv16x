@@ -1,19 +1,12 @@
 #include "platform_interface.h"
 
 #include <zephyr/kernel.h>
-#include <zephyr/drivers/spi.h>
+#include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(spi_interface, CONFIG_LSM6DSV16X_LOG_LEVEL);
+LOG_MODULE_REGISTER(platform_interface, CONFIG_LSM6DSV16X_LOG_LEVEL);
 
-// Configuration structures
-const struct device *imu_spi = DEVICE_DT_GET(DT_NODELABEL(xiao_spi));
-const struct spi_config imu_spi_cfg = {
-    .frequency = DT_PROP(DT_NODELABEL(spi2), clock_frequency),
-    .operation = LSM6DSV16X_SPI_OP,
-    .cs = SPI_CS_CONTROL_INIT(DT_NODELABEL(lsm6dsv16x), 10),
-};
-
+static const struct i2c_dt_spec imu_i2c = I2C_DT_SPEC_GET(DT_NODELABEL(lsm6dsv16x));
 /*
  * @brief  platform specific delay (platform dependent)
  *
@@ -38,19 +31,7 @@ void platform_delay(uint32_t ms)
 int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp,
                               uint16_t len)
 {
-	uint8_t buffer_tx[1] = { reg & ~SPI_READ };
-
-    /*
-	 *   transaction #1: write 1 byte with reg addr (msb at 0)
-	 *   transaction #2: write "len" byte of data
-	 */
-	const struct spi_buf tx_buf[2] = {
-		{ .buf = buffer_tx, .len = 1, },
-		{ .buf = bufp, .len = len, }
-	};
-	const struct spi_buf_set tx = { .buffers = tx_buf, .count = 2 };
-
-    return spi_write(imu_spi, &imu_spi_cfg, &tx);
+	return i2c_burst_write_dt(&imu_i2c, reg, bufp, len);
 }
 
 /*
@@ -66,24 +47,7 @@ int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp,
 int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp,
                              uint16_t len)
 {
-	uint8_t buffer_tx[2] = { reg | SPI_READ, 0 };
-
-	/*  write 1 byte with reg addr (msb at 1) + 1 dummy byte */
-	const struct spi_buf tx_buf = { .buf = buffer_tx, .len = 2, };
-	const struct spi_buf_set tx = { .buffers = &tx_buf, .count = 1 };
-
-	/*
-	 *   transaction #1: dummy read to skip first byte
-	 *   transaction #2: read "len" byte of data
-	 */
-	const struct spi_buf rx_buf[2] = {
-		{ .buf = NULL, .len = 1, },
-		{ .buf = bufp, .len = len, }
-	};
-	const struct spi_buf_set rx = { .buffers = rx_buf, .count = 2 };
-
-
-    return spi_transceive(imu_spi, &imu_spi_cfg, &tx, &rx);
+	return i2c_burst_read_dt(&imu_i2c, reg, bufp, len);
 }
 
 int8_t attach_interrupt(const struct gpio_dt_spec gpio, gpio_flags_t input, gpio_flags_t edge, struct gpio_callback *callback, gpio_callback_handler_t handler)
