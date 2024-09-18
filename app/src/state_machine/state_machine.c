@@ -4,6 +4,7 @@
 
 #include <app/lib/lsm6dsv16x.h>
 #include <usb_mass_storage/usb_mass_storage.h>
+#include <edge-impulse/impulse.h>
 
 LOG_MODULE_REGISTER(state_machine, CONFIG_APP_LOG_LEVEL);
 
@@ -54,6 +55,7 @@ static void recording_entry(void *o)
 		LOG_ERR("Unable to create session (%i)", res);
 	}
     lsm6dsv16x_start_acquisition(false);
+	impulse_start_predicting();
 }
 
 static void recording_run(void *o)
@@ -70,6 +72,7 @@ static void recording_run(void *o)
 
 static void recording_exit(void *o)
 {
+	impulse_stop_predicting();
     lsm6dsv16x_stop_acquisition();
 	int res = usb_mass_storage_end_current_session();
 	if (res) {

@@ -15,6 +15,8 @@
 #include <app/lib/lsm6dsv16x.h>
 #include <app/lib/xiao_smp_bluetooth.h>
 
+#include <edge-impulse/impulse.h>
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 struct line {
@@ -57,12 +59,17 @@ static struct line l = {
 static void print_line_if_needed(){
 	char txt[TXT_SIZE];
 	char data_forwarded[TXT_SIZE];
+	float_t ei_input_data[3];
+
 	if (l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated) {
 		l.acc_updated = false;
 		l.gyro_updated = false;
 		l.ts_updated = false;
 		l.game_rot_updated = false;
 		l.gravity_updated = false;
+		ei_input_data[0] = l.acc_x;
+		ei_input_data[1] = l.acc_y;
+		ei_input_data[2] = l.acc_z;
 
 		int res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
 		if (res < 0 && res >= TXT_SIZE) {
@@ -81,6 +88,8 @@ static void print_line_if_needed(){
 			LOG_ERR("Unable to write to session file, ending session");
 			state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
 		}
+
+		impulse_add_data(ei_input_data, 3);
 	}
 }
 
@@ -226,6 +235,8 @@ int main(void)
 	start_smp_bluetooth_adverts();
 
 	state_machine_init(starting_state);
+
+	impulse_init();
 
 	return state_machine_run();
 }
