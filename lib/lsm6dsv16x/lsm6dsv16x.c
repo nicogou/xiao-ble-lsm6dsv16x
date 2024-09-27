@@ -33,9 +33,9 @@ K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
 
 int lsm6dsv16x_start_acquisition(bool enable_gbias)
 {
-	lsm6dsv16x_pin_int_route_t pin_int;
-	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp;
-	lsm6dsv16x_filt_settling_mask_t filt_settling_mask;
+	lsm6dsv16x_pin_int_route_t pin_int = {0};
+	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp = {0};
+	lsm6dsv16x_filt_settling_mask_t filt_settling_mask = {0};
 	int ret;
 
 	/* Enable Block Data Update */
