@@ -76,11 +76,14 @@ static void print_line_if_needed(){
 			LOG_ERR("Encoding error happened (%i)", res);
 		}
 
-		res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
-		if (res < 0 && res >= TXT_SIZE) {
-			LOG_ERR("Encoding error happened for data forwarder (%i)", res);
+		if (state_machine_current_state() == RECORDING_DATA_FORWARDER)
+		{
+			res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+			if (res < 0 && res >= TXT_SIZE) {
+				LOG_ERR("Encoding error happened for data forwarder (%i)", res);
+			}
+			printk("%s", data_forwarded);
 		}
-		printk("%s", data_forwarded);
 
 		res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
 
@@ -89,7 +92,10 @@ static void print_line_if_needed(){
 			state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
 		}
 
-		impulse_add_data(ei_input_data, 3);
+		if (state_machine_current_state() == RECORDING_IMPULSE)
+		{
+			impulse_add_data(ei_input_data, 3);
+		}
 	}
 }
 
