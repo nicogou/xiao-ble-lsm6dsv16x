@@ -48,10 +48,10 @@ K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
 
 int lsm6dsv16x_start_acquisition(bool enable_gbias)
 {
-	lsm6dsv16x_pin_int_route_t pin1_int;
-	lsm6dsv16x_pin_int_route_t pin2_int;
-	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp;
-	lsm6dsv16x_filt_settling_mask_t filt_settling_mask;
+	lsm6dsv16x_pin_int_route_t pin1_int = {0};
+	lsm6dsv16x_pin_int_route_t pin2_int = {0};
+	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp = {0};
+	lsm6dsv16x_filt_settling_mask_t filt_settling_mask = {0};
 	int ret;
 
 	/* Enable Block Data Update */
@@ -79,7 +79,6 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	}
 
 	/* Set FIFO batch of sflp data */
-	/*
 	fifo_sflp.game_rotation = 1;
 	fifo_sflp.gravity = 1;
 	fifo_sflp.gbias = enable_gbias;
@@ -87,7 +86,6 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_sflp_batch_set (%i)", ret);
 	}
-*/
 
 	/* Set FIFO batch XL/Gyro ODR to 60Hz */
 	ret = lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
@@ -99,7 +97,6 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 		LOG_ERR("lsm6dsv16x_fifo_gy_batch_set (%i)", ret);
 	}
 	/* Set FIFO mode to Stream mode (aka Continuous Mode) */
-/*
 	ret = lsm6dsv16x_fifo_mode_set(&sensor.dev_ctx, LSM6DSV16X_STREAM_MODE);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_mode_set (%i)", ret);
@@ -110,7 +107,6 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_pin_int1_route_set (%i)", ret);
 	}
-*/
 
 	/* Set Output Data Rate */
 	ret = lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
@@ -121,7 +117,6 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_gy_data_rate_set (%i)", ret);
 	}
-/*
 	ret = lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_sflp_data_rate_set (%i)", ret);
@@ -143,7 +138,6 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_sflp_game_gbias_set (%i)", ret);
 	}
-*/
 
 	sensor.state = LSM6DSV16X_RECORDING;
 	/* Mask accelerometer and gyroscope data until the settling of the sensors filter is completed */
