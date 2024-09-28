@@ -204,8 +204,6 @@ int main(void)
 		return 0;
 	}
 
-	LOG_INF("The device is put in USB mass storage mode.");
-
 	float x, y, z;
 	ret = usb_mass_storage_check_calibration_file_contents(&x, &y, &z);
 	if (ret == -ENOENT) {
