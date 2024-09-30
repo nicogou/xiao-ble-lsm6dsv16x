@@ -64,12 +64,12 @@
 
 		imu_int1: imu_int1 {
 			label = "IMU interrupt 1 pin";
-			gpios = <&xiao_d 0 GPIO_ACTIVE_HIGH>;
+			gpios = <&xiao_d 1 GPIO_ACTIVE_HIGH>;
 		};
 
 		imu_int2: imu_int2 {
 			label = "IMU interrupt 2 pin";
-			gpios = <&xiao_d 1 GPIO_ACTIVE_HIGH>;
+			gpios = <&xiao_d 0 GPIO_ACTIVE_HIGH>;
 		};
 
 		charging: charging {
@@ -108,6 +108,7 @@
 
 &uicr {
 	gpio-as-nreset;
+	nfct-pins-as-gpios;
 };
 
 &gpiote {
@@ -150,14 +151,6 @@
 	status = "okay";
 	pinctrl-0 = <&pwm0_default>;
 	pinctrl-1 = <&pwm0_sleep>;
-	pinctrl-names = "default", "sleep";
-};
-
-&spi2 {
-	compatible = "nordic,nrf-spi";
-	status = "okay";
-	pinctrl-0 = <&spi2_default>;
-	pinctrl-1 = <&spi2_sleep>;
 	pinctrl-names = "default", "sleep";
 };
 
