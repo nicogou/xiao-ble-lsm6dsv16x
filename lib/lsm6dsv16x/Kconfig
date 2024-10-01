@@ -3,6 +3,16 @@ config LSM6DSV16X
 	help
 	  This option enables the LSM6DSV16X library.
 
+config LSM6DSV16X_SPI
+	bool "Enable the LSM6DSV16X SPI communication"
+	help
+	  This options enables the SPI communication with LSM6DSV16X sensor.
+
+config LSM6DSV16X_I2C
+	bool "Enable the LSM6DSV16X I2C communication"
+	help
+	  This options enables the I2C communication with LSM6DSV16X sensor.
+
 config LSM6DSV16X_CALIBRATION_SETTLING_TIME
 	int "Calibration settling time in seconds"
 	default 5
