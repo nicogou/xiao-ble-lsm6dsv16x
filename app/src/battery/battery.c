@@ -164,7 +164,9 @@ static int divider_setup(void)
 #endif /* CONFIG_ADC_var */
 
     rc = adc_channel_setup(ddp->adc, accp);
-    LOG_INF("Setup AIN%u got %d", iocp->channel, rc);
+	if (rc != 0) {
+	    LOG_ERR("ADC channel %u setup error %d", iocp->channel, rc);
+	}
 
     return rc;
 }
@@ -174,9 +176,10 @@ static bool battery_ok;
 static int battery_setup(void)
 {
     int rc = divider_setup();
+	if (rc != 0) {
+	    LOG_ERR("Battery setup error: %d", rc);
+	}
 
-    battery_ok = (rc == 0);
-    LOG_INF("Battery setup: %d %d", rc, battery_ok);
     return rc;
 }
 

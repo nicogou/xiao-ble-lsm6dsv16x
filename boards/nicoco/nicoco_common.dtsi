@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2022 Marcin Niestroj
- * Copyright (c) 2022 Peter Johanson
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #include <nordic/nrf52840_qiaa.dtsi>
 #include "nicoco-pinctrl.dtsi"
 #include "seeed_xiao_connector.dtsi"
@@ -21,7 +14,6 @@
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &code_partition;
 		zephyr,ieee802154 = &ieee802154;
-		nordic,pm-ext-flash = &w25q128;
 	};
 
 	log_uarts: log_uarts {
@@ -49,7 +41,16 @@
 		compatible = "pwm-leds";
 		pwm_led0: pwm_led_0 {
 			pwms = <&pwm0 0 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+			label = "Red PWM LED";
 		};
+		pwm_led1: pwm_led_1 {
+            pwms = <&pwm0 1 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+			label = "Green PWM LED";
+        };
+        pwm_led2: pwm_led_2 {
+            pwms = <&pwm0 2 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+			label = "Blue PWM LED";
+        };
 	};
 
 	msc_disk0 {
@@ -61,16 +62,6 @@
 
 	gpin {
 		compatible = "gpio-keys";
-
-		imu_int1: imu_int1 {
-			label = "IMU interrupt 1 pin";
-			gpios = <&xiao_d 0 GPIO_ACTIVE_HIGH>;
-		};
-
-		imu_int2: imu_int2 {
-			label = "IMU interrupt 2 pin";
-			gpios = <&xiao_d 1 GPIO_ACTIVE_HIGH>;
-		};
 
 		charging: charging {
 			gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
@@ -92,13 +83,11 @@
 		led1 = &led1;
 		led2 = &led2;
 		pwm-led0 = &pwm_led0;
+		pwm-led1 = &pwm_led1;
+		pwm-led2 = &pwm_led2;
 		bootloader-led0 = &led0;
 		mcuboot-led0 = &led0;
 		watchdog0 = &wdt0;
-		spi-flash0 = &w25q128;
-		imu = &lsm6dsv16x;
-		imuint1 = &imu_int1;
-		imuint2 = &imu_int2;
 	};
 };
 
@@ -131,71 +120,11 @@
 	pinctrl-names = "default", "sleep";
 };
 
-&i2c1 {
-	compatible = "nordic,nrf-twi";
-	/* Cannot be used together with spi1. */
-	status = "okay";
-	pinctrl-0 = <&i2c1_default>;
-	pinctrl-1 = <&i2c1_sleep>;
-	pinctrl-names = "default", "sleep";
-	clock-frequency = <I2C_BITRATE_FAST>;
-	lsm6dsv16x: lsm6dsv16x@6b {
-		status = "okay";
-		compatible = "vnd,i2c-device";
-		reg = <0x6b>;
-	};
-};
-
 &pwm0 {
 	status = "okay";
 	pinctrl-0 = <&pwm0_default>;
 	pinctrl-1 = <&pwm0_sleep>;
 	pinctrl-names = "default", "sleep";
-};
-
-&spi2 {
-	compatible = "nordic,nrf-spi";
-	status = "okay";
-	pinctrl-0 = <&spi2_default>;
-	pinctrl-1 = <&spi2_sleep>;
-	pinctrl-names = "default", "sleep";
-};
-
-&qspi {
-	status = "okay";
-	pinctrl-0 = <&qspi_default>;
-	pinctrl-1 = <&qspi_sleep>;
-	pinctrl-names = "default", "sleep";
-	w25q128: w25q128@0 {
-		compatible = "nordic,qspi-nor";
-		reg = <0>;
-		sck-frequency = <104000000>;
-		quad-enable-requirements = "S2B1v1";
-		jedec-id = [ef 40 18];
-		/*
-		Refer to the Winbond application note for SFDP Definition table for the correct parameters.
-		sfdp-bfp = [
-			e5 20 f1 ff  ff ff ff 00  44 eb 08 6b  08 3b 80 bb
-			ee ff ff ff  ff ff 00 ff  ff ff 00 ff  0c 20 0f 52
-			10 d8 08 81
-		];
-		 */
-		size = <0x8000000>;
-		has-dpd;
-		t-enter-dpd = <3000>;
-		t-exit-dpd = <3000>;
-
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			storage_partition: partition@0 {
-				label = "storage";
-				reg = <0x00000000 0x01000000>;
-			};
-		};
-	};
 };
 
 &ieee802154 {

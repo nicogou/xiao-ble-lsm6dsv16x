@@ -1,8 +1,3 @@
-# XIAO BLE board configuration
-
-# Copyright (c) 2022 Marcin Niestroj
-# SPDX-License-Identifier: Apache-2.0
-
 if BOARD_NICOCO
 
 config BT_CTLR
@@ -18,4 +13,4 @@ config USB_DEVICE_INITIALIZE_AT_BOOT
 
 endif # USB_DEVICE_STACK
 
-endif # BOARD_XIAO_BLE
+endif # BOARD_NICOCO

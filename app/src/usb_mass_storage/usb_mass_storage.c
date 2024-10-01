@@ -40,9 +40,6 @@ static int setup_flash(struct fs_mount_t *mnt)
 	id = STORAGE_PARTITION_ID;
 
 	rc = flash_area_open(id, &pfa);
-	LOG_DBG("Area %u at 0x%x on %s for %u bytes",
-	       id, (unsigned int)pfa->fa_off, pfa->fa_dev->name,
-	       (unsigned int)pfa->fa_size);
 
 	if (rc < 0 && IS_ENABLED(CONFIG_APP_WIPE_STORAGE)) {
 		LOG_INF("Erasing flash area ... ");
@@ -96,22 +93,11 @@ static void setup_disk(void)
 		return;
 	}
 
-	/* Allow log messages to flush to avoid interleaved output */
-	k_sleep(K_MSEC(50));
-
-	LOG_DBG("Mount %s: %d", fs_mnt.mnt_point, rc);
-
 	rc = fs_statvfs(mp->mnt_point, &sbuf);
 	if (rc < 0) {
 		LOG_ERR("FAIL: statvfs: %d", rc);
 		return;
 	}
-
-	LOG_DBG("%s: bsize = %lu ; frsize = %lu ;"
-	       " blocks = %lu ; bfree = %lu",
-	       mp->mnt_point,
-	       sbuf.f_bsize, sbuf.f_frsize,
-	       sbuf.f_blocks, sbuf.f_bfree);
 
 	return;
 }
@@ -513,7 +499,11 @@ int usb_mass_storage_init() {
 		LOG_ERR("Failed to enable USB (%i)", ret);
 		return -EIO;
 	}
+	k_msleep(50); // Sleep to let Mass Storage some time to finish initing.
+
 #endif
+
+	LOG_INF("USB mass storage mounted at %s", fs_mnt.mnt_point);
 
 	return 0;
 }
