@@ -1,0 +1,7 @@
+description: |
+    STMicroelectronics LSM6DSV16X 6-axis IMU (Inertial Measurement Unit) sensor
+    accessed through I2C bus
+
+compatible: "zephyr,lsm6dsv16x"
+
+include: ["i2c-device.yaml"]

@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-
 # Enable MPU
 CONFIG_ARM_MPU=y
 
@@ -24,6 +22,3 @@ CONFIG_USB_DEVICE_STACK=y
 # Build UF2 by default, supported by the Adafruit nRF52 Bootloader
 CONFIG_BUILD_OUTPUT_UF2=y
 CONFIG_USE_DT_CODE_PARTITION=y
-
-# Required to enable LSM6DS3TR-C power
-CONFIG_REGULATOR=y

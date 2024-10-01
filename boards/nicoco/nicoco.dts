@@ -1,0 +1,7 @@
+/dts-v1/;
+#include "nicoco_common.dtsi"
+
+/ {
+	model = "Seeed XIAO BLE based LSM6DSV16X evaluation";
+	compatible = "others,nicoco";
+};

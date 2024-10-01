@@ -1,5 +1,5 @@
-identifier: nicoco
-name: Nicoco XIAO BLE
+identifier: nicoco/nrf52840/sense
+name: Nicoco XIAO BLE Sense
 type: mcu
 arch: arm
 ram: 256
@@ -21,4 +21,3 @@ supported:
   - usb_device
   - watchdog
   - netif:openthread
-vendor: vendor
