@@ -3,8 +3,23 @@
         nordic,pm-ext-flash = &w25q128;
     };
 
+	gpin {
+		imu_int1: imu_int1 {
+			label = "IMU interrupt 1 pin";
+			gpios = <&xiao_d 1 GPIO_ACTIVE_HIGH>;
+		};
+
+		imu_int2: imu_int2 {
+			label = "IMU interrupt 2 pin";
+			gpios = <&xiao_d 0 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
     aliases {
         spi-flash0 = &w25q128;
+		imu = &lsm6dsv16x;
+		imuint1 = &imu_int1;
+		imuint2 = &imu_int2;
     };
 };
 
@@ -22,7 +37,7 @@
 	clock-frequency = <I2C_BITRATE_FAST>;
 	lsm6dsv16x: lsm6dsv16x@6b {
 		status = "okay";
-		compatible = "vnd,i2c-device";
+		compatible = "zephyr,lsm6dsv16x";
 		reg = <0x6b>;
 	};
 };

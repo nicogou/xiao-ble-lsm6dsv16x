@@ -4,7 +4,7 @@
 #include <zephyr/drivers/spi.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(spi_interface, CONFIG_LSM6DSV16X_LOG_LEVEL);
+LOG_MODULE_REGISTER(platform_interface, CONFIG_LSM6DSV16X_LOG_LEVEL);
 // Configuration structures
 static const struct spi_dt_spec imu_spi = SPI_DT_SPEC_GET(DT_NODELABEL(lsm6dsv16x), LSM6DSV16X_SPI_OP, 10);
 
