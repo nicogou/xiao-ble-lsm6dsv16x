@@ -499,6 +499,8 @@ int usb_mass_storage_init() {
 		LOG_ERR("Failed to enable USB (%i)", ret);
 		return -EIO;
 	}
+	k_msleep(50); // Sleep to let Mass Storage some time to finish initing.
+
 #endif
 
 	LOG_INF("USB mass storage mounted at %s", fs_mnt.mnt_point);
