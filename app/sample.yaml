@@ -8,7 +8,7 @@ common:
   sysbuild: true
   build_only: true
   integration_platforms:
-    - custom_plank
+    - nicoco
 tests:
   app.default: {}
   app.debug:

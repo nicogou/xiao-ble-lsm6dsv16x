@@ -5,6 +5,12 @@
 
 #include <zephyr/logging/log.h>
 
+#if (!defined(CONFIG_LSM6DSV16X_SPI) && !defined(CONFIG_LSM6DSV16X_I2C))
+#error "No communication interface defined. Enable either CONFIG_LSM6DSV16X_SPI or CONFIG_LSM6DSV16X_I2C."
+#elif (defined(CONFIG_LSM6DSV16X_SPI) && defined(CONFIG_LSM6DSV16X_I2C))
+#error "Too many communication interfaces defined. Enable either CONFIG_LSM6DSV16X_SPI or CONFIG_LSM6DSV16X_I2C, but not both."
+#endif
+
 LOG_MODULE_REGISTER(lsm6dsv16x, CONFIG_LSM6DSV16X_LOG_LEVEL);
 
 static lsm6dsv16x_sensor_t sensor;

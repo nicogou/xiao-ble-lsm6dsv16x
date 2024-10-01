@@ -1,7 +1,21 @@
 config LSM6DSV16X
 	bool "Support for LSM6DSV16X sensor library"
+	select LSM6DSV16X_I2C if $(dt_compat_on_bus,$(DT_COMPAT_ZEPHYR_LSM6DSV16X),i2c)
+	select LSM6DSV16X_SPI if $(dt_compat_on_bus,$(DT_COMPAT_ZEPHYR_LSM6DSV16X),spi)
 	help
 	  This option enables the LSM6DSV16X library.
+
+config LSM6DSV16X_SPI
+	bool
+	select SPI
+	help
+	  This options enables the SPI communication with LSM6DSV16X sensor.
+
+config LSM6DSV16X_I2C
+	bool
+	select I2C
+	help
+	  This options enables the I2C communication with LSM6DSV16X sensor.
 
 config LSM6DSV16X_CALIBRATION_SETTLING_TIME
 	int "Calibration settling time in seconds"
@@ -11,9 +25,6 @@ config LSM6DSV16X_CALIBRATION_SETTLING_TIME
 	  This option configures the time in seconds between the start of the sensor, and the first gyroscope bias measurement.
 
 if LSM6DSV16X
-
-config I2C
-	default y
 
 config GPIO
 	default y

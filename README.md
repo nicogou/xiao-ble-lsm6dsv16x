@@ -58,7 +58,7 @@ In order to flash the board, it needs to be in bootloader mode. To do this, quic
 Once you have built the application, run the following command to flash it:
 
 ```shell
-west flash -r uf2
+west flash
 ```
 
 ## Testing

@@ -4,7 +4,7 @@
 # Copyright (c) 2021 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
-set(BOARD xiao_ble/nrf52840/sense)
+set(BOARD nicoco)
 list(APPEND EXTRA_CONF_FILE "overlay_usb_mass_storage.conf overlay_smp_bt.conf")
 
 cmake_minimum_required(VERSION 3.13.1)
