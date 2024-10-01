@@ -21,4 +21,3 @@ supported:
   - usb_device
   - watchdog
   - netif:openthread
-vendor: vendor

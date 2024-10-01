@@ -11,7 +11,7 @@
 
 / {
 	model = "Seeed XIAO BLE Sense";
-	compatible = "vendor,nicoco", "vendor,xiao-ble-sense";
+	compatible = "others,nicoco", "others,xiao-ble-sense";
 
 	msm261d3526hicpm-c-en {
 		compatible = "regulator-fixed";

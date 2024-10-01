@@ -9,5 +9,5 @@
 
 / {
 	model = "Seeed XIAO BLE based LSM6DSV16X evaluation";
-	compatible = "vendor,nicoco";
+	compatible = "others,nicoco";
 };
