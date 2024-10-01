@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-
 # Enable MPU
 CONFIG_ARM_MPU=y
 
