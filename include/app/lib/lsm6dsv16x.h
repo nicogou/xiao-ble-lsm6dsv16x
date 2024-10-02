@@ -4,7 +4,7 @@
 #include "lsm6dsv16x_reg.h"
 
 #define BOOT_TIME 10 //ms
-#define FIFO_WATERMARK 64
+#define FIFO_WATERMARK 200
 
 typedef enum {
 	LSM6DSV16X_OFF,
