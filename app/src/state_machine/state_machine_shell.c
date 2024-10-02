@@ -10,6 +10,7 @@ static int cmd_recording_start(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argv);
 
 	state_machine_post_event(XIAO_EVENT_START_RECORDING);
+	shell_print(sh, "%s", "Recording Start event posted");
 	return 0;
 }
 
@@ -19,6 +20,7 @@ static int cmd_recording_start_data_forwarder(const struct shell *sh, size_t arg
 	ARG_UNUSED(argv);
 
 	state_machine_post_event(XIAO_EVENT_START_RECORDING_DATA_FORWARDER);
+	shell_print(sh, "%s", "Recording Start Data Forwarder event posted");
 	return 0;
 }
 
@@ -28,6 +30,7 @@ static int cmd_recording_start_impulse(const struct shell *sh, size_t argc, char
 	ARG_UNUSED(argv);
 
 	state_machine_post_event(XIAO_EVENT_START_RECORDING_IMPULSE);
+	shell_print(sh, "%s", "Recording Start Impulse event posted");
 	return 0;
 }
 
@@ -37,6 +40,7 @@ static int cmd_recording_stop(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argv);
 
 	state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
+	shell_print(sh, "%s", "Recording Stop event posted");
 	return 0;
 }
 
@@ -59,6 +63,7 @@ static int cmd_calibrating_start(const struct shell *sh, size_t argc, char **arg
 	ARG_UNUSED(argv);
 
 	state_machine_post_event(XIAO_EVENT_START_CALIBRATION);
+	shell_print(sh, "%s", "Calibration Start event posted");
 	return 0;
 }
 
@@ -68,6 +73,7 @@ static int cmd_calibrating_stop(const struct shell *sh, size_t argc, char **argv
 	ARG_UNUSED(argv);
 
 	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
+	shell_print(sh, "%s", "Calibration Stop event posted");
 	return 0;
 }
 
