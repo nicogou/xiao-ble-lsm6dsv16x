@@ -12,7 +12,7 @@
 
 #define SESSION_FILE_NAME		"SESSION"
 #define SESSION_FILE_EXTENSION	".CSV"
-#define SESSION_FILE_HEADER		"ts,ax,ay,az,gx,gy,gz\n"//,grotx,groty,grotz,grotw,gravx,gravy,gravz\n"
+#define SESSION_FILE_HEADER		"ts,ax,ay,az,gx,gy,gz,grotx,groty,grotz,grotw,gravx,gravy,gravz\n"
 
 #define CALIBRATION_FILE_NAME	"CAL.TXT"
 #define CALIBRATION_FILE_SIZE	29
