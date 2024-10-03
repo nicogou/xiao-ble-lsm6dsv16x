@@ -67,6 +67,12 @@ static void recording_simple_entry(void *o)
     current_state = RECORDING_SIMPLE;
 }
 
+static void recording_sflp_entry(void *o)
+{
+    LOG_INF("Entering RECORDING_SFLP state.");
+    current_state = RECORDING_SFLP;
+}
+
 static void data_forwarder_entry(void *o)
 {
     LOG_INF("Entering RECORDING_DATA_FORWARDER state.");
@@ -93,6 +99,15 @@ static void recording_run(void *o)
 }
 
 static void recording_simple_run(void *o)
+{
+	__unused struct s_object *s = (struct s_object *)o;
+
+	/* Use smf_set_handled to handle recording_simple specific events.
+	 * Events that are common to all recording states are handled in recording_run.
+	 */
+}
+
+static void recording_sflp_run(void *o)
 {
 	__unused struct s_object *s = (struct s_object *)o;
 
@@ -129,6 +144,10 @@ static void recording_exit(void *o)
 }
 
 static void recording_simple_exit(void *o)
+{
+}
+
+static void recording_sflp_exit(void *o)
 {
 }
 
@@ -175,6 +194,7 @@ static const struct smf_state xiao_states[] = {
     [IDLE] = SMF_CREATE_STATE(idle_entry, idle_run, NULL, NULL, NULL),
     [RECORDING] = SMF_CREATE_STATE(recording_entry, recording_run, recording_exit, NULL, &xiao_states[RECORDING_SIMPLE]),
     [RECORDING_SIMPLE] = SMF_CREATE_STATE(recording_simple_entry, recording_simple_run, recording_simple_exit, &xiao_states[RECORDING], NULL),
+    [RECORDING_SFLP] = SMF_CREATE_STATE(recording_simple_entry, recording_simple_run, recording_simple_exit, &xiao_states[RECORDING], NULL),
     [RECORDING_DATA_FORWARDER] = SMF_CREATE_STATE(data_forwarder_entry, recording_data_forwarder_run, data_forwarder_exit, &xiao_states[RECORDING], NULL),
     [RECORDING_IMPULSE] = SMF_CREATE_STATE(impulse_entry, recording_impulse_run, impulse_exit, &xiao_states[RECORDING], NULL),
     [CALIBRATING] = SMF_CREATE_STATE(calibrating_entry, calibrating_run, calibrating_exit, NULL, NULL),
