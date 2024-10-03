@@ -37,7 +37,7 @@ static void _calibration_timer_cb(struct k_timer *dummy)
 
 K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
 
-int lsm6dsv16x_start_acquisition(bool enable_gbias)
+int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp)
 {
 	lsm6dsv16x_pin_int_route_t pin_int = {0};
 	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp = {0};
@@ -69,8 +69,8 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias)
 	}
 
 	/* Set FIFO batch of sflp data */
-	fifo_sflp.game_rotation = 1;
-	fifo_sflp.gravity = 1;
+	fifo_sflp.game_rotation = enable_sflp;
+	fifo_sflp.gravity = enable_sflp;
 	fifo_sflp.gbias = enable_gbias;
 	ret = lsm6dsv16x_fifo_sflp_batch_set(&sensor.dev_ctx, fifo_sflp);
 	if (ret) {
@@ -160,7 +160,7 @@ int lsm6dsv16x_stop_acquisition()
 
 int lsm6dsv16x_start_calibration()
 {
-	int res = lsm6dsv16x_start_acquisition(true);
+	int res = lsm6dsv16x_start_acquisition(true, false);
 	if (res != 0)
 	{
 		LOG_ERR("Error while starting the sensor");

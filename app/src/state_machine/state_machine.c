@@ -38,6 +38,8 @@ static void idle_run(void *o)
     /* Change states on Button Press Event */
     if (s->events & XIAO_EVENT_START_RECORDING) {
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING]);
+    } else if (s->events & XIAO_EVENT_START_RECORDING_SFLP) {
+        smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING_SFLP]);
     } else if (s->events & XIAO_EVENT_START_RECORDING_DATA_FORWARDER) {
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING_DATA_FORWARDER]);
     } else if (s->events & XIAO_EVENT_START_RECORDING_IMPULSE) {
@@ -58,25 +60,27 @@ static void recording_entry(void *o)
 	if (res < 0) {
 		LOG_ERR("Unable to create session (%i)", res);
 	}
-    lsm6dsv16x_start_acquisition(false);
 }
 
 static void recording_simple_entry(void *o)
 {
     LOG_INF("Entering RECORDING_SIMPLE state.");
     current_state = RECORDING_SIMPLE;
+    lsm6dsv16x_start_acquisition(false, false);
 }
 
 static void recording_sflp_entry(void *o)
 {
     LOG_INF("Entering RECORDING_SFLP state.");
     current_state = RECORDING_SFLP;
+    lsm6dsv16x_start_acquisition(false, true);
 }
 
 static void data_forwarder_entry(void *o)
 {
     LOG_INF("Entering RECORDING_DATA_FORWARDER state.");
     current_state = RECORDING_DATA_FORWARDER;
+    lsm6dsv16x_start_acquisition(false, true);
 }
 
 static void impulse_entry(void *o)
@@ -84,6 +88,7 @@ static void impulse_entry(void *o)
     LOG_INF("Entering RECORDING_IMPULSE state.");
     current_state = RECORDING_IMPULSE;
 	impulse_start_predicting();
+    lsm6dsv16x_start_acquisition(false, false);
 }
 
 static void recording_run(void *o)
@@ -194,7 +199,7 @@ static const struct smf_state xiao_states[] = {
     [IDLE] = SMF_CREATE_STATE(idle_entry, idle_run, NULL, NULL, NULL),
     [RECORDING] = SMF_CREATE_STATE(recording_entry, recording_run, recording_exit, NULL, &xiao_states[RECORDING_SIMPLE]),
     [RECORDING_SIMPLE] = SMF_CREATE_STATE(recording_simple_entry, recording_simple_run, recording_simple_exit, &xiao_states[RECORDING], NULL),
-    [RECORDING_SFLP] = SMF_CREATE_STATE(recording_simple_entry, recording_simple_run, recording_simple_exit, &xiao_states[RECORDING], NULL),
+    [RECORDING_SFLP] = SMF_CREATE_STATE(recording_sflp_entry, recording_sflp_run, recording_sflp_exit, &xiao_states[RECORDING], NULL),
     [RECORDING_DATA_FORWARDER] = SMF_CREATE_STATE(data_forwarder_entry, recording_data_forwarder_run, data_forwarder_exit, &xiao_states[RECORDING], NULL),
     [RECORDING_IMPULSE] = SMF_CREATE_STATE(impulse_entry, recording_impulse_run, impulse_exit, &xiao_states[RECORDING], NULL),
     [CALIBRATING] = SMF_CREATE_STATE(calibrating_entry, calibrating_run, calibrating_exit, NULL, NULL),
