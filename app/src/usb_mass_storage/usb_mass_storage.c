@@ -233,17 +233,16 @@ int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, 
 	res = fs_write(f, data, len); // Write data to corresponding SD file.
 	if (res < 0) {
 		LOG_ERR("Failed to write data to file (%i)", res);
-		return res;
 	}
 	if (res < len)
 	{
 		LOG_WRN("The data has not been properly written to the file (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
-		return -ENOMEM;
+		res = -ENOMEM;
 	}
 
 	k_sem_give(&write_sem); // Give the semaphore back so that app can end session correctly.
 
-	return 0;
+	return (res < 0 ? res : 0);
 }
 
 int usb_mass_storage_close_file(struct fs_file_t *f)
