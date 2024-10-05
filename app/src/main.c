@@ -9,6 +9,7 @@
 #include <usb_mass_storage/usb_mass_storage.h>
 #endif
 #include <state_machine/state_machine.h>
+#include <battery/battery.h>
 
 #include <app_version.h>
 
@@ -206,6 +207,8 @@ static void calib_res_cb(float_t x, float_t y, float_t z)
 int main(void)
 {
 	int ret;
+
+	battery_init();
 
 	LOG_INF("Xiao LSM6DSV16X Evaluation %s", APP_VERSION_STRING);
 
