@@ -61,7 +61,7 @@ static void print_line_if_needed(){
 	char data_forwarded[TXT_SIZE];
 	float_t ei_input_data[3];
 
-	if (l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated) {
+	if (l.acc_updated && l.gyro_updated && l.ts_updated/* && l.game_rot_updated && l.gravity_updated*/) {
 		l.acc_updated = false;
 		l.gyro_updated = false;
 		l.ts_updated = false;
