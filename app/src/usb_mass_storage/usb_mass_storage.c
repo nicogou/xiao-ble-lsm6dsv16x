@@ -18,6 +18,9 @@ static char current_session_path[MAX_PATH];
 static struct fs_file_t calibration_file;
 static int current_session_nb = 0;
 
+static char session_wr_buffer[SESSION_WR_BUFFER_SIZE];
+static size_t session_wr_buffer_len = 0;
+
 K_SEM_DEFINE(write_sem, 1, 1);
 
 struct fs_file_t* usb_mass_storage_get_session_file_p()
@@ -210,6 +213,12 @@ int usb_mass_storage_create_file(const char *path, const char *filename, struct 
 
 int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, bool erase_content)
 {
+	// Take a semaphore in order to prevent end session to happen during a write.
+	if (k_sem_take(&write_sem, K_NO_WAIT) != 0) {
+        LOG_ERR("Unable to write data, semaphore is unavailable!");
+		return -EINPROGRESS;
+    }
+
 	int res;
 	if (erase_content)
 	{
@@ -221,18 +230,19 @@ int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, 
 
 	}
 
-	res = fs_write(f, data, strlen(data)); // Write data to corresponding SD file.
+	res = fs_write(f, data, len); // Write data to corresponding SD file.
 	if (res < 0) {
 		LOG_ERR("Failed to write data to file (%i)", res);
-		return res;
 	}
 	if (res < len)
 	{
 		LOG_WRN("The data has not been properly written to the file (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
-		return -ENOMEM;
+		res = -ENOMEM;
 	}
 
-	return 0;
+	k_sem_give(&write_sem); // Give the semaphore back so that app can end session correctly.
+
+	return (res < 0 ? res : 0);
 }
 
 int usb_mass_storage_close_file(struct fs_file_t *f)
@@ -328,6 +338,8 @@ static int get_session_nb(const char *path){
 int usb_mass_storage_create_session()
 {
 	struct fs_mount_t *mp = &fs_mnt;
+	memset(session_wr_buffer, 0, SESSION_WR_BUFFER_SIZE);
+	session_wr_buffer_len = 0;
 
 	char path[MAX_PATH];
 	int base = 0;
@@ -380,6 +392,23 @@ int usb_mass_storage_end_current_session(){
         LOG_ERR("Semaphore not available!");
 		return -EINPROGRESS;
     }
+	char read[SESSION_WR_BUFFER_THRESHOLD];
+
+	k_msleep(1000);
+
+	int size_read;
+	if (fs_seek(&current_session_file, 0, FS_SEEK_SET)){
+		LOG_ERR("error when seeking");
+	}
+	do {
+		size_read = fs_read(&current_session_file, read, SESSION_WR_BUFFER_THRESHOLD);
+		for (int ii = 0; ii < size_read; ii++) {
+			if (read[ii] == 0xFF) {
+				LOG_ERR("Corrupted data before closing file");
+				break;
+			}
+		}
+	} while (size_read == SESSION_WR_BUFFER_THRESHOLD);
 
 	int res = fs_close(&current_session_file);
 	if (res != 0) {
@@ -392,26 +421,48 @@ int usb_mass_storage_end_current_session(){
 }
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
-	// Take a semaphore in order to prevent end session to happen during a write.
-	if (k_sem_take(&write_sem, K_NO_WAIT) != 0) {
-        LOG_ERR("Unable to write data, semaphore is unavailable!");
-		return -EINPROGRESS;
-    }
-
-	int res = fs_write(&current_session_file, data, strlen(data)); // Write data to corresponding SD file.
-	if (res < 0) {
-		LOG_ERR("Failed to write data to current session file (%i)", res);
-		return res;
+	int res = 0;
+	char read[SESSION_WR_BUFFER_THRESHOLD];
+	memcpy(&session_wr_buffer[session_wr_buffer_len], data, len);
+	session_wr_buffer_len += len;
+	if (session_wr_buffer_len >= SESSION_WR_BUFFER_SIZE) {
+		LOG_ERR("Write buffer is full, resetting buffer");
+		session_wr_buffer_len = 0;
+		return -E2BIG;
 	}
-	if (res < len)
+
+	if (session_wr_buffer_len >= SESSION_WR_BUFFER_THRESHOLD)
 	{
-		LOG_WRN("The data has not been properly written to the session (written data length in bytes: %i vs expected %u - errno %i)", res, len, errno);
-		return -ENOMEM;
+		res = usb_mass_storage_write_to_file(session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD, &current_session_file, false);
+		if (res < 0) {
+			LOG_ERR("Failed to write data to current session file (%i)", res);
+			return res;
+		}
+
+		res= fs_seek(&current_session_file, -SESSION_WR_BUFFER_THRESHOLD, FS_SEEK_END);
+		if (res) {
+			LOG_WRN("test");
+		}
+		int size_read = fs_read(&current_session_file, read, SESSION_WR_BUFFER_THRESHOLD);
+		if (strncmp(read, session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD) != 0){
+			LOG_ERR("Corrupted data");
+			LOG_HEXDUMP_ERR(read, SESSION_WR_BUFFER_THRESHOLD, "read");
+			LOG_HEXDUMP_ERR(session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD, "read");
+		}
+		res = fs_seek(&current_session_file, 0, FS_SEEK_END);
+		if (res) {
+			LOG_ERR("yoohoo");
+		}
+
+		char tmp[SESSION_WR_BUFFER_SIZE];
+		size_t s = session_wr_buffer_len - SESSION_WR_BUFFER_THRESHOLD;
+		memcpy(tmp, &session_wr_buffer[SESSION_WR_BUFFER_THRESHOLD], s);
+		memcpy(session_wr_buffer, tmp, s);
+		memset(&session_wr_buffer[SESSION_WR_BUFFER_THRESHOLD], 0, s);
+		session_wr_buffer_len -= SESSION_WR_BUFFER_THRESHOLD;
 	}
 
-	k_sem_give(&write_sem); // Give the semaphore back so that app can end session correctly.
-
-	return 0;
+	return res;
 }
 
 int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *z)

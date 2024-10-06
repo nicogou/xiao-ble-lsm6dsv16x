@@ -9,11 +9,14 @@
 #include <usb_mass_storage/usb_mass_storage.h>
 #endif
 #include <state_machine/state_machine.h>
+#include <battery/battery.h>
 
 #include <app_version.h>
 
 #include <app/lib/lsm6dsv16x.h>
 #include <app/lib/xiao_smp_bluetooth.h>
+
+#include <edge-impulse/impulse.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -57,29 +60,54 @@ static struct line l = {
 static void print_line_if_needed(){
 	char txt[TXT_SIZE];
 	char data_forwarded[TXT_SIZE];
-	if (l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated) {
+	float_t ei_input_data[3];
+
+	bool b;
+	if (state_machine_current_state() == RECORDING_SFLP) {
+		b = l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated;
+	} else {
+		b = l.acc_updated && l.gyro_updated && l.ts_updated;
+	}
+
+	if (b) {
 		l.acc_updated = false;
 		l.gyro_updated = false;
 		l.ts_updated = false;
 		l.game_rot_updated = false;
 		l.gravity_updated = false;
+		ei_input_data[0] = l.acc_x;
+		ei_input_data[1] = l.acc_y;
+		ei_input_data[2] = l.acc_z;
 
-		int res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+		int res;
+		if (state_machine_current_state() == RECORDING_SFLP) {
+			res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+		} else {
+			res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+		}
 		if (res < 0 && res >= TXT_SIZE) {
 			LOG_ERR("Encoding error happened (%i)", res);
 		}
 
-		res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
-		if (res < 0 && res >= TXT_SIZE) {
-			LOG_ERR("Encoding error happened for data forwarder (%i)", res);
+		if (state_machine_current_state() == RECORDING_DATA_FORWARDER)
+		{
+			res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+			if (res < 0 && res >= TXT_SIZE) {
+				LOG_ERR("Encoding error happened for data forwarder (%i)", res);
+			}
+			printk("%s", data_forwarded);
 		}
-		printk("%s", data_forwarded);
 
 		res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
 
 		if (res < 0) {
 			LOG_ERR("Unable to write to session file, ending session");
 			state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
+		}
+
+		if (state_machine_current_state() == RECORDING_IMPULSE)
+		{
+			impulse_add_data(ei_input_data, 3);
 		}
 	}
 }
@@ -180,6 +208,8 @@ int main(void)
 {
 	int ret;
 
+	battery_init();
+
 	LOG_INF("Xiao LSM6DSV16X Evaluation %s", APP_VERSION_STRING);
 
 	lsm6dsv16x_cb_t callbacks = {
@@ -224,6 +254,8 @@ int main(void)
 	start_smp_bluetooth_adverts();
 
 	state_machine_init(starting_state);
+
+	impulse_init();
 
 	return state_machine_run();
 }
