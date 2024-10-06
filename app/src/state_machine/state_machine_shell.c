@@ -95,4 +95,31 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_calibrating,
 );
 SHELL_CMD_REGISTER(cal, &sub_calibrating, "Calibrating commands", NULL);
 
+static int cmd_emulating_start(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	state_machine_post_event(XIAO_EVENT_START_EMULATION);
+	shell_print(sh, "%s", "Emulation Start event posted");
+	return 0;
+}
+
+static int cmd_emulating_stop(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	state_machine_post_event(XIAO_EVENT_STOP_EMULATION);
+	shell_print(sh, "%s", "Emulation Stop event posted");
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_emulating,
+	SHELL_CMD(start, NULL, "Start emulating.", cmd_emulating_start),
+	SHELL_CMD(stop, NULL, "Stop emulating.", cmd_emulating_stop),
+	SHELL_SUBCMD_SET_END /* Array terminated. */
+);
+SHELL_CMD_REGISTER(emul, &sub_emulating, "Emulating commands", NULL);
+
 #endif

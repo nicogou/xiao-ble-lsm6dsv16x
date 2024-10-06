@@ -46,6 +46,8 @@ static void idle_run(void *o)
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING_IMPULSE]);
     } else if (s->events & XIAO_EVENT_START_CALIBRATION) {
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[CALIBRATING]);
+    }  else if (s->events & XIAO_EVENT_START_EMULATION) {
+        smf_set_state(SMF_CTX(&s_obj), &xiao_states[EMULATING]);
     } else {
         LOG_WRN("Unhandled event in IDLE state.");
     }
@@ -190,6 +192,30 @@ static void calibrating_exit(void *o)
 	lsm6dsv16x_stop_calibration();
 }
 
+/* State EMULATING */
+static void emulating_entry(void *o)
+{
+    LOG_INF("Entering EMULATING state.");
+    current_state = EMULATING;
+}
+
+static void emulating_run(void *o)
+{
+    struct s_object *s = (struct s_object *)o;
+
+    /* Change states on Button Press Event */
+    if (s->events & XIAO_EVENT_STOP_EMULATION) {
+        smf_set_state(SMF_CTX(&s_obj), &xiao_states[IDLE]);
+    } else {
+        LOG_WRN("Unhandled event in EMULATING state.");
+    }
+}
+
+static void emulating_exit(void *o)
+{
+
+}
+
 xiao_state_t state_machine_current_state(void) {
     return current_state;
 }
@@ -203,6 +229,7 @@ static const struct smf_state xiao_states[] = {
     [RECORDING_DATA_FORWARDER] = SMF_CREATE_STATE(data_forwarder_entry, recording_data_forwarder_run, data_forwarder_exit, &xiao_states[RECORDING], NULL),
     [RECORDING_IMPULSE] = SMF_CREATE_STATE(impulse_entry, recording_impulse_run, impulse_exit, &xiao_states[RECORDING], NULL),
     [CALIBRATING] = SMF_CREATE_STATE(calibrating_entry, calibrating_run, calibrating_exit, NULL, NULL),
+    [EMULATING] = SMF_CREATE_STATE(emulating_entry, emulating_run, emulating_exit, NULL, NULL),
 };
 
 int state_machine_post_event(xiao_event_t event)
