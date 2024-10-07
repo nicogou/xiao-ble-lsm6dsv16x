@@ -26,9 +26,6 @@ config THREAD_MONITOR
 config INIT_STACKS
 	default y
 
-config LOG_CMDS
-	default y
-
 config THREAD_NAME
 	default y
 
