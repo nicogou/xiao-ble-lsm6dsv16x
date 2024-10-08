@@ -375,12 +375,6 @@ int usb_mass_storage_create_session()
 		return res;
 	}
 
-	res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER, strlen(SESSION_FILE_HEADER));
-	if (res != 0){
-		LOG_ERR("Failed to write session header to session file");
-		return res;
-	}
-
 	current_session_nb = nb;
 
 	return nb;

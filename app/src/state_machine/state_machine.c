@@ -66,6 +66,10 @@ static void recording_simple_entry(void *o)
 {
     LOG_INF("Entering RECORDING_SIMPLE state.");
     current_state = RECORDING_SIMPLE;
+	int res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE));
+	if (res != 0){
+		LOG_ERR("Failed to write session header to session file");
+	}
     lsm6dsv16x_start_acquisition(false, false);
 }
 
@@ -73,6 +77,10 @@ static void recording_sflp_entry(void *o)
 {
     LOG_INF("Entering RECORDING_SFLP state.");
     current_state = RECORDING_SFLP;
+	int res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SFLP, strlen(SESSION_FILE_HEADER_SFLP));
+	if (res != 0){
+		LOG_ERR("Failed to write session header to session file");
+	}
     lsm6dsv16x_start_acquisition(false, true);
 }
 
@@ -80,6 +88,10 @@ static void data_forwarder_entry(void *o)
 {
     LOG_INF("Entering RECORDING_DATA_FORWARDER state.");
     current_state = RECORDING_DATA_FORWARDER;
+	int res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SFLP, strlen(SESSION_FILE_HEADER_SFLP));
+	if (res != 0){
+		LOG_ERR("Failed to write session header to session file");
+	}
     lsm6dsv16x_start_acquisition(false, true);
 }
 
@@ -87,6 +99,10 @@ static void impulse_entry(void *o)
 {
     LOG_INF("Entering RECORDING_IMPULSE state.");
     current_state = RECORDING_IMPULSE;
+	int res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE));
+	if (res != 0){
+		LOG_ERR("Failed to write session header to session file");
+	}
 	impulse_start_predicting();
     lsm6dsv16x_start_acquisition(false, false);
 }
