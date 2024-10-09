@@ -5,6 +5,7 @@
 #include <app/lib/lsm6dsv16x.h>
 #include <usb_mass_storage/usb_mass_storage.h>
 #include <edge-impulse/impulse.h>
+#include <emulator/emulator.h>
 
 LOG_MODULE_REGISTER(state_machine, CONFIG_APP_LOG_LEVEL);
 
@@ -213,6 +214,21 @@ static void emulating_entry(void *o)
 {
     LOG_INF("Entering EMULATING state.");
     current_state = EMULATING;
+	float x, y, z;
+	int ret = usb_mass_storage_check_calibration_file_contents(&x, &y, &z);
+	if (ret == -ENOENT) {
+		// No calibration file present, or it has the wrong size.
+		LOG_WRN("Correct calibration file not found, triggering calibration");
+	} else if (ret != 0) {
+		// Something else went wrong when reading calibration file
+		LOG_ERR("Failed to check calibration file (%i)", ret);
+	} else {
+		// Calibration file has been read properly.
+		LOG_DBG("Got gbias values");
+		emulator_set_gbias(x, y, z);
+	}
+
+	emulator_session_start();
 }
 
 static void emulating_run(void *o)
@@ -229,7 +245,7 @@ static void emulating_run(void *o)
 
 static void emulating_exit(void *o)
 {
-
+	emulator_session_stop();
 }
 
 xiao_state_t state_machine_current_state(void) {
