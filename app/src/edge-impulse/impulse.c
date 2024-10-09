@@ -30,7 +30,7 @@ static void result_ready_cb(int err)
 			break;
 		}
 
-		LOG_INF("Value: %.2f\tLabel: %s", value, label);
+		LOG_INF("Value: %.2f\tLabel: %s", (double)value, label);
 	}
 
 	if (err) {
@@ -41,7 +41,7 @@ static void result_ready_cb(int err)
 			if (err) {
 				LOG_ERR("Cannot get anomaly (err: %d)", err);
 			} else {
-				LOG_INF("Anomaly: %.2f", anomaly);
+				LOG_INF("Anomaly: %.2f", (double)anomaly);
 			}
 		}
 	}

@@ -34,6 +34,7 @@ static int cmd_recording_start_data_forwarder(const struct shell *sh, size_t arg
 	return 0;
 }
 
+#if defined(CONFIG_EDGE_IMPULSE)
 static int cmd_recording_start_impulse(const struct shell *sh, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -43,6 +44,7 @@ static int cmd_recording_start_impulse(const struct shell *sh, size_t argc, char
 	shell_print(sh, "%s", "Recording Start Impulse event posted");
 	return 0;
 }
+#endif
 
 static int cmd_recording_stop(const struct shell *sh, size_t argc, char **argv)
 {
@@ -56,7 +58,9 @@ static int cmd_recording_stop(const struct shell *sh, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_recording_start,
 	SHELL_CMD(data_forwarder, NULL, "Start recording with data forwarder.", cmd_recording_start_data_forwarder),
+#if defined(CONFIG_EDGE_IMPULSE)
 	SHELL_CMD(impulse, NULL, "Start recording with impulse predictions.", cmd_recording_start_impulse),
+#endif
 	SHELL_CMD(sflp, NULL, "Start recording with SFLP.", cmd_recording_start_sflp),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );

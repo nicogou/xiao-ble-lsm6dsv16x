@@ -61,6 +61,15 @@ Once you have built the application, run the following command to flash it:
 west flash
 ```
 
+### Edge Impulse
+There are two steps in order to use a private Impulse in your project.
+- first you need to set up the project's API key in a dedicated cmake file. This file must be called secrets.cmake. It will be picked up by CMake to set the `EI_API_KEY_HEADER` variable. An example file is provided: secrets-example.cmake. Alternatively, it can be specified when building: `west build app -- -DEI_API_KEY_HEADER="x-api-key:your_api_key"`
+- secondly you need to adapt the project ID in the overlay_edge_impulse.conf file. On line 7, `CONFIG_EDGE_IMPULSE_URI="https://studio.edgeimpulse.com/v1/api/XYZ/deployment/download?type=zip"`, XYZ must be adapted with your own project ID.
+
+Edge Impulse can also be deactivated by setting the `EI_API_KEY_HEADER` CMake variable to an empty string, either in the secrets.cmake file or when building with west: `west build app -- -DEI_API_KEY_HEADER=""`
+
+For more information, see [the Edge Impulse integration documentation](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/external_comp/edge_impulse.html#downloading_from_a_private_project).
+
 ## Testing
 
 To execute Twister integration tests, run the following command:

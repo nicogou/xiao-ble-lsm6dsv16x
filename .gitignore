@@ -17,3 +17,5 @@ __pycache__/
 
 # Edge Impulse library
 /app/src/edge-impulse/*.zip
+# Specify Edge Impulse project key in this file
+/app/secrets.cmake

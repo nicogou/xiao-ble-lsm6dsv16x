@@ -16,7 +16,9 @@
 #include <app/lib/lsm6dsv16x.h>
 #include <app/lib/xiao_smp_bluetooth.h>
 
+#if defined(CONFIG_EDGE_IMPULSE)
 #include <edge-impulse/impulse.h>
+#endif
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -105,10 +107,12 @@ static void print_line_if_needed(){
 			state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
 		}
 
+#if defined(CONFIG_EDGE_IMPULSE)
 		if (state_machine_current_state() == RECORDING_IMPULSE)
 		{
 			impulse_add_data(ei_input_data, 3);
 		}
+#endif
 	}
 }
 
@@ -255,7 +259,9 @@ int main(void)
 
 	state_machine_init(starting_state);
 
+#if defined(CONFIG_EDGE_IMPULSE)
 	impulse_init();
+#endif
 
 	return state_machine_run();
 }

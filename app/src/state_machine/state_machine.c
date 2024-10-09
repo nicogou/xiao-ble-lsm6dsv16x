@@ -42,8 +42,10 @@ static void idle_run(void *o)
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING_SFLP]);
     } else if (s->events & XIAO_EVENT_START_RECORDING_DATA_FORWARDER) {
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING_DATA_FORWARDER]);
+#if defined(CONFIG_EDGE_IMPULSE)
     } else if (s->events & XIAO_EVENT_START_RECORDING_IMPULSE) {
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING_IMPULSE]);
+#endif
     } else if (s->events & XIAO_EVENT_START_CALIBRATION) {
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[CALIBRATING]);
     } else {
@@ -95,6 +97,7 @@ static void data_forwarder_entry(void *o)
     lsm6dsv16x_start_acquisition(false, true);
 }
 
+#if defined(CONFIG_EDGE_IMPULSE)
 static void impulse_entry(void *o)
 {
     LOG_INF("Entering RECORDING_IMPULSE state.");
@@ -106,6 +109,7 @@ static void impulse_entry(void *o)
 	impulse_start_predicting();
     lsm6dsv16x_start_acquisition(false, false);
 }
+#endif
 
 static void recording_run(void *o)
 {
@@ -146,6 +150,7 @@ static void recording_data_forwarder_run(void *o)
 	 */
 }
 
+#if defined(CONFIG_EDGE_IMPULSE)
 static void recording_impulse_run(void *o)
 {
 	__unused struct s_object *s = (struct s_object *)o;
@@ -154,6 +159,7 @@ static void recording_impulse_run(void *o)
 	 * Events that are common to all recording states are handled in recording_run.
 	 */
 }
+#endif
 
 static void recording_exit(void *o)
 {
@@ -176,10 +182,12 @@ static void data_forwarder_exit(void *o)
 {
 }
 
+#if defined(CONFIG_EDGE_IMPULSE)
 static void impulse_exit(void *o)
 {
 	impulse_stop_predicting();
 }
+#endif
 
 /* State CALIBRATING */
 static void calibrating_entry(void *o)
@@ -217,7 +225,9 @@ static const struct smf_state xiao_states[] = {
     [RECORDING_SIMPLE] = SMF_CREATE_STATE(recording_simple_entry, recording_simple_run, recording_simple_exit, &xiao_states[RECORDING], NULL),
     [RECORDING_SFLP] = SMF_CREATE_STATE(recording_sflp_entry, recording_sflp_run, recording_sflp_exit, &xiao_states[RECORDING], NULL),
     [RECORDING_DATA_FORWARDER] = SMF_CREATE_STATE(data_forwarder_entry, recording_data_forwarder_run, data_forwarder_exit, &xiao_states[RECORDING], NULL),
+#if defined(CONFIG_EDGE_IMPULSE)
     [RECORDING_IMPULSE] = SMF_CREATE_STATE(impulse_entry, recording_impulse_run, impulse_exit, &xiao_states[RECORDING], NULL),
+#endif
     [CALIBRATING] = SMF_CREATE_STATE(calibrating_entry, calibrating_run, calibrating_exit, NULL, NULL),
 };
 

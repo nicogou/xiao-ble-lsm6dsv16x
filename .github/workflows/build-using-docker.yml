@@ -25,8 +25,10 @@ jobs:
 
       - name: Build firmware
         working-directory: xiao-ble-lsm6dsv16x.git
+        env:
+          EI_API_KEY: ${{ secrets.EI_API_KEY }}
         run: |
-          west build -b nicoco app -- -DEXTRA_CONF_FILE="debug.conf"
+          west build -b nicoco app -- -DEXTRA_CONF_FILE="debug.conf" -DEI_API_KEY_HEADER="x-api-key:$EI_API_KEY"
 
       - name: Store hex files
         uses: actions/upload-artifact@v4
