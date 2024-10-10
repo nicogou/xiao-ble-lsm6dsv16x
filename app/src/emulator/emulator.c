@@ -31,12 +31,7 @@ static void _parse_line(char* buf, size_t len)
 		case 0:
 			ts = strtof(pt, NULL);
 			break;
-		case 1:
-		case 2:
-		case 3:
-		case 4:
-		case 5:
-		case 6:
+		case 1 ... 13:
 			val[cnt-1] = strtol(pt, NULL, 10);
 			break;
 
@@ -60,6 +55,14 @@ static void _parse_line(char* buf, size_t len)
 		if (sensor.callbacks.emulator_gyro_sample_cb)
 		{
 			(*sensor.callbacks.emulator_gyro_sample_cb)((float_t)val[3], (float_t)val[4], (float_t)val[5]);
+		}
+		if (sensor.callbacks.emulator_game_rot_sample_cb)
+		{
+			(*sensor.callbacks.emulator_game_rot_sample_cb)((float_t)val[6], (float_t)val[7], (float_t)val[8], (float_t)val[9]);
+		}
+		if (sensor.callbacks.emulator_gravity_sample_cb)
+		{
+			(*sensor.callbacks.emulator_gravity_sample_cb)((float_t)val[10], (float_t)val[11], (float_t)val[12]);
 		}
 
 		emulated_session_waiting_time = (uint32_t)(1000.0 * (ts - last_ts));
