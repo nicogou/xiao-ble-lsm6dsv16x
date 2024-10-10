@@ -79,13 +79,6 @@ int emulator_set_session(char* file_path)
 	return 0;
 }
 
-void emulator_set_gbias(float_t x, float_t y, float_t z)
-{
-	sensor.gbias[0] = x;
-	sensor.gbias[1] = y;
-	sensor.gbias[2] = z;
-}
-
 void emulator_init(emulator_cb_t cb)
 {
 	sensor.callbacks = cb;

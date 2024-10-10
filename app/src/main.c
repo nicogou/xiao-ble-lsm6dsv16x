@@ -231,10 +231,8 @@ int main(void)
 		.emulator_ts_sample_cb = ts_received_cb,
 		.emulator_acc_sample_cb = acc_received_cb,
 		.emulator_gyro_sample_cb = gyro_received_cb,
-		.emulator_gbias_sample_cb = gbias_received_cb,
 		.emulator_gravity_sample_cb = gravity_received_cb,
 		.emulator_game_rot_sample_cb = game_rot_received_cb,
-		.emulator_calibration_result_cb = calib_res_cb,
 	};
 
 	emulator_init(emulator_callbacks);
