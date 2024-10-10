@@ -9,9 +9,10 @@
 LOG_MODULE_REGISTER(emulator, CONFIG_APP_LOG_LEVEL);
 
 #define READ_SIZE 200
+#define FILE_NAME_SIZE 40
 
 static emulator_sensor_t sensor;
-static char* emulated_session_name = "/NAND:/SESSION1/SESSION.CSV";
+static char emulated_session_name[FILE_NAME_SIZE] = "/NAND:/SESSION1/SESSION.CSV";
 static uint32_t emulated_session_waiting_time = 1000000;
 static float_t ts, last_ts;
 static char rd_buffer[READ_SIZE];
@@ -68,6 +69,16 @@ static void _parse_line(char* buf, size_t len)
 	}
 }
 
+int emulator_set_session(char* file_path)
+{
+	if (strlen(file_path) > FILE_NAME_SIZE) {
+		LOG_ERR("File name too long");
+		return -E2BIG;
+	}
+	strcpy(emulated_session_name, file_path);
+	return 0;
+}
+
 void emulator_set_gbias(float_t x, float_t y, float_t z)
 {
 	sensor.gbias[0] = x;
@@ -99,7 +110,7 @@ static void emulator_run(void *p1, void *p2, void *p3)
 	int off = 0;
 
 	while(true) {
-		if (session_type != 0) {
+		if (session_type > 0) {
 			off = usb_mass_storage_read_line(rd_buffer, READ_SIZE, 0, usb_mass_storage_get_session_file_p());
 			if (off < 0)
 			{
@@ -110,6 +121,10 @@ static void emulator_run(void *p1, void *p2, void *p3)
 			rd_buffer[off] = 0;
 			_parse_line(rd_buffer, strlen(rd_buffer));
 		} else {
+			if (session_type < 0) {
+				state_machine_post_event(XIAO_EVENT_STOP_EMULATION);
+				session_type = 0;
+			}
 			off = 0;
 		}
 		k_usleep(emulated_session_waiting_time);

@@ -3,6 +3,7 @@
 #include <zephyr/kernel.h>
 #include "state_machine.h"
 #include <zephyr/shell/shell.h>
+#include <emulator/emulator.h>
 
 static int cmd_recording_start(const struct shell *sh, size_t argc, char **argv)
 {
@@ -97,8 +98,11 @@ SHELL_CMD_REGISTER(cal, &sub_calibrating, "Calibrating commands", NULL);
 
 static int cmd_emulating_start(const struct shell *sh, size_t argc, char **argv)
 {
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
+	int res = emulator_set_session(argv[1]);
+	if (res) {
+		shell_error(sh, "%s", "Cannot set Emulator session");
+		return res;
+	}
 
 	state_machine_post_event(XIAO_EVENT_START_EMULATION);
 	shell_print(sh, "%s", "Emulation Start event posted");
@@ -116,7 +120,7 @@ static int cmd_emulating_stop(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_emulating,
-	SHELL_CMD(start, NULL, "Start emulating.", cmd_emulating_start),
+	SHELL_CMD_ARG(start, NULL, "Start emulating. Specify the full path of the emulated file as argument", cmd_emulating_start, 2, 0),
 	SHELL_CMD(stop, NULL, "Stop emulating.", cmd_emulating_stop),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );

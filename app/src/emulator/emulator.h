@@ -21,5 +21,6 @@ typedef struct {
 
 void emulator_init(emulator_cb_t cb);
 void emulator_set_gbias(float x, float y, float z);
+int emulator_set_session(char* file_path);
 void emulator_session_start();
 void emulator_session_stop();
