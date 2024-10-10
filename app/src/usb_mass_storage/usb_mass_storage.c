@@ -261,8 +261,6 @@ int usb_mass_storage_get_session_header(const char* path, struct fs_file_t *f)
 		return size_read;
 	}
 
-	LOG_DBG("Read session header: %s", file_content);
-
 	if (strncmp(file_content, SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE)) == 0) {
 		ret = fs_seek(&current_session_file, strlen(SESSION_FILE_HEADER_SIMPLE), FS_SEEK_SET);
 		if (ret){
@@ -309,7 +307,7 @@ int usb_mass_storage_read_line(char* data, size_t len, size_t offset, struct fs_
 		}
 	}
 
-	LOG_ERR("Detected end of file");
+	LOG_WRN("Detected end of file");
 	data = NULL;
 	return -EBADF;
 }
