@@ -63,7 +63,7 @@ static void print_line_if_needed(){
 	float_t ei_input_data[3];
 
 	bool b;
-	if (state_machine_current_state() == RECORDING_SFLP) {
+	if (state_machine_current_state() == RECORDING_SFLP || state_machine_current_state() == RECORDING_DATA_FORWARDER) {
 		b = l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated;
 	} else {
 		b = l.acc_updated && l.gyro_updated && l.ts_updated;
