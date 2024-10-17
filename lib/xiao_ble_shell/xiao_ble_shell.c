@@ -74,6 +74,7 @@ static int cmd_reset(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argv);
 
 	shell_print(sh, "Resetting Xiao BLE...");
+	k_msleep(10);
 	NVIC_SystemReset();
 
 	return 0;

@@ -50,7 +50,7 @@
 	w25q128: w25q128@0 {
 		compatible = "nordic,qspi-nor";
 		reg = <0>;
-		sck-frequency = <104000000>;
+		sck-frequency = <16000000>; /* Use only 16MHz. The max frequency of 104MHz corrupts the data when reading/writing. */
 		quad-enable-requirements = "S2B1v1";
 		jedec-id = [ef 40 18];
 		/*

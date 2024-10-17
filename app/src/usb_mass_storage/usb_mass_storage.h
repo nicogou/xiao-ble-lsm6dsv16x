@@ -12,7 +12,8 @@
 
 #define SESSION_FILE_NAME		"SESSION"
 #define SESSION_FILE_EXTENSION	".CSV"
-#define SESSION_FILE_HEADER		"ts,ax,ay,az,gx,gy,gz,grotx,groty,grotz,grotw,gravx,gravy,gravz\n"
+#define SESSION_FILE_HEADER_SIMPLE		"ts,ax,ay,az,gx,gy,gz\n"
+#define SESSION_FILE_HEADER_SFLP		"ts,ax,ay,az,gx,gy,gz,grotx,groty,grotz,grotw,gravx,gravy,gravz\n"
 
 #define CALIBRATION_FILE_NAME	"CAL.TXT"
 #define CALIBRATION_FILE_SIZE	29
@@ -20,6 +21,9 @@
 #define CALIBRATION_DATA_X_POSITION	2
 #define CALIBRATION_DATA_Y_POSITION	12
 #define CALIBRATION_DATA_Z_POSITION	22
+
+#define SESSION_WR_BUFFER_SIZE 2048
+#define SESSION_WR_BUFFER_THRESHOLD 1024
 
 int usb_mass_storage_init();
 int usb_mass_storage_lsdir(const char *path);
