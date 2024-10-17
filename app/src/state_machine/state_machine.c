@@ -70,7 +70,7 @@ static void recording_simple_entry(void *o)
 	if (res != 0){
 		LOG_ERR("Failed to write session header to session file");
 	}
-    lsm6dsv16x_start_acquisition(false, false);
+    lsm6dsv16x_start_acquisition(false, false, false);
 }
 
 static void recording_sflp_entry(void *o)
@@ -81,7 +81,7 @@ static void recording_sflp_entry(void *o)
 	if (res != 0){
 		LOG_ERR("Failed to write session header to session file");
 	}
-    lsm6dsv16x_start_acquisition(false, true);
+    lsm6dsv16x_start_acquisition(false, true, false);
 }
 
 static void data_forwarder_entry(void *o)
@@ -92,7 +92,7 @@ static void data_forwarder_entry(void *o)
 	if (res != 0){
 		LOG_ERR("Failed to write session header to session file");
 	}
-    lsm6dsv16x_start_acquisition(false, true);
+    lsm6dsv16x_start_acquisition(false, true, false);
 }
 
 static void impulse_entry(void *o)
@@ -104,7 +104,7 @@ static void impulse_entry(void *o)
 		LOG_ERR("Failed to write session header to session file");
 	}
 	impulse_start_predicting();
-    lsm6dsv16x_start_acquisition(false, false);
+    lsm6dsv16x_start_acquisition(false, false, false);
 }
 
 static void recording_run(void *o)

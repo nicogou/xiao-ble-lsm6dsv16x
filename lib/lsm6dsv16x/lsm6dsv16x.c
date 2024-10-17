@@ -15,8 +15,9 @@ LOG_MODULE_REGISTER(lsm6dsv16x, CONFIG_LSM6DSV16X_LOG_LEVEL);
 
 static lsm6dsv16x_sensor_t sensor;
 static lsm6dsv16x_sflp_gbias_t gbias = {.gbias_x = 0, .gbias_y = 0, .gbias_z = 0};
+static lsm6dsv16x_ah_qvar_mode_t qvar_mode;
 
-static struct k_work imu_work;
+static struct k_work imu_int1_work;
 
 // Interrupt 1 init
 static const struct gpio_dt_spec imu_int_1 =
@@ -26,7 +27,21 @@ static struct gpio_callback imu_int_1_cb_data;
 
 void imu_int_1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-	k_work_submit(&imu_work);
+	k_work_submit(&imu_int1_work);
+    return;
+}
+
+static struct k_work imu_int2_work;
+
+// Interrupt 2 init
+static const struct gpio_dt_spec imu_int_2 =
+    GPIO_DT_SPEC_GET(DT_ALIAS(imuint2), gpios);
+
+static struct gpio_callback imu_int_2_cb_data;
+
+void imu_int_2_cb(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+	k_work_submit(&imu_int2_work);
     return;
 }
 
@@ -37,9 +52,10 @@ static void _calibration_timer_cb(struct k_timer *dummy)
 
 K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
 
-int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp)
+int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enable_qvar)
 {
-	lsm6dsv16x_pin_int_route_t pin_int = {0};
+	lsm6dsv16x_pin_int_route_t pin1_int = {0};
+	lsm6dsv16x_pin_int_route_t pin2_int = {0};
 	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp = {0};
 	lsm6dsv16x_filt_settling_mask_t filt_settling_mask = {0};
 	int ret;
@@ -92,12 +108,11 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp)
 		LOG_ERR("lsm6dsv16x_fifo_mode_set (%i)", ret);
 	}
 
-	pin_int.fifo_th = PROPERTY_ENABLE;
-	ret = lsm6dsv16x_pin_int1_route_set(&sensor.dev_ctx, &pin_int);
+	pin1_int.fifo_th = PROPERTY_ENABLE;
+	ret = lsm6dsv16x_pin_int1_route_set(&sensor.dev_ctx, &pin1_int);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_pin_int1_route_set (%i)", ret);
 	}
-	//lsm6dsv16x_pin_int2_route_set(&sensor.dev_ctx, &pin_int);
 
 	/* Set Output Data Rate */
 	ret = lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_960Hz);
@@ -139,6 +154,23 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp)
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_filt_settling_mask_set (%i)", ret);
 	}
+//	lsm6dsv16x_filt_xl_lp2_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+//	lsm6dsv16x_filt_xl_lp2_bandwidth_set(&sensor.dev_ctx, LSM6DSV16X_XL_STRONG);
+
+	if (enable_qvar)
+	{
+		qvar_mode.ah_qvar_en = 1;
+		ret = lsm6dsv16x_ah_qvar_mode_set(&sensor.dev_ctx, qvar_mode);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+		}
+
+		pin2_int.drdy_ah_qvar = PROPERTY_ENABLE;
+		ret = lsm6dsv16x_pin_int2_route_set(&sensor.dev_ctx, &pin2_int);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_pin_int2_route_set (%i)", ret);
+		}
+	}
 
 	sensor.nb_samples_to_discard = CONFIG_LSM6DSV16X_SAMPLES_TO_DISCARD;
 
@@ -160,7 +192,7 @@ int lsm6dsv16x_stop_acquisition()
 
 int lsm6dsv16x_start_calibration()
 {
-	int res = lsm6dsv16x_start_acquisition(true, false);
+	int res = lsm6dsv16x_start_acquisition(true, false, false);
 	if (res != 0)
 	{
 		LOG_ERR("Error while starting the sensor");
@@ -184,16 +216,35 @@ void lsm6dsv16x_set_gbias(float x, float y, float z)
 	gbias.gbias_z = z * 1000.0f;
 }
 
+void lsm6dsv16x_int2_irq(struct k_work *item) {
+	lsm6dsv16x_all_sources_t all_sources;
+	int16_t data;
+
+	/* Read output only if new values are available */
+    lsm6dsv16x_all_sources_get(&sensor.dev_ctx, &all_sources);
+    if (all_sources.drdy_ah_qvar) {
+      lsm6dsv16x_ah_qvar_raw_get(&sensor.dev_ctx, &data);
+
+	  LOG_DBG("QVAR [mV]:%6.2f", (double)lsm6dsv16x_from_lsb_to_mv(data));
+    }
+}
+
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 {
 	sensor.callbacks = cb;
 
 	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
 	if (res != 0) {
-		LOG_ERR("Error while attaching interrupt %i", res);
+		LOG_ERR("Error while attaching interrupt 1 %i", res);
 	}
 
-	k_work_init(&imu_work, lsm6dsv16x_irq);
+	res = attach_interrupt(imu_int_2, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_2_cb_data, imu_int_2_cb);
+	if (res != 0) {
+		LOG_ERR("Error while attaching interrupt 2 %i", res);
+	}
+
+	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
+	k_work_init(&imu_int2_work, lsm6dsv16x_int2_irq);
 
 	lsm6dsv16x_reset_t rst;
 
@@ -302,7 +353,7 @@ static bool _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data, float_t
 	return handled;
 }
 
-void lsm6dsv16x_irq(struct k_work *item) {
+void lsm6dsv16x_int1_irq(struct k_work *item) {
 
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
