@@ -52,12 +52,12 @@ static void _calibration_timer_cb(struct k_timer *dummy)
 
 K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
 
-int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp)
+int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enable_qvar)
 {
 	lsm6dsv16x_pin_int_route_t pin1_int = {0};
-	lsm6dsv16x_pin_int_route_t pin2_int = {0} = {0};
-	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp = {0} = {0};
-	lsm6dsv16x_filt_settling_mask_t filt_settling_mask = {0} = {0};
+	lsm6dsv16x_pin_int_route_t pin2_int = {0};
+	lsm6dsv16x_fifo_sflp_raw_t fifo_sflp = {0};
+	lsm6dsv16x_filt_settling_mask_t filt_settling_mask = {0};
 	int ret;
 
 	/* Enable Block Data Update */
@@ -157,16 +157,19 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp)
 //	lsm6dsv16x_filt_xl_lp2_set(&sensor.dev_ctx, PROPERTY_ENABLE);
 //	lsm6dsv16x_filt_xl_lp2_bandwidth_set(&sensor.dev_ctx, LSM6DSV16X_XL_STRONG);
 
-	qvar_mode.ah_qvar_en = 1;
-	ret = lsm6dsv16x_ah_qvar_mode_set(&sensor.dev_ctx, qvar_mode);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
-	}
+	if (enable_qvar)
+	{
+		qvar_mode.ah_qvar_en = 1;
+		ret = lsm6dsv16x_ah_qvar_mode_set(&sensor.dev_ctx, qvar_mode);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+		}
 
-	pin2_int.drdy_ah_qvar = PROPERTY_ENABLE;
-	ret = lsm6dsv16x_pin_int2_route_set(&sensor.dev_ctx, &pin2_int);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_pin_int2_route_set (%i)", ret);
+		pin2_int.drdy_ah_qvar = PROPERTY_ENABLE;
+		ret = lsm6dsv16x_pin_int2_route_set(&sensor.dev_ctx, &pin2_int);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_pin_int2_route_set (%i)", ret);
+		}
 	}
 
 	sensor.nb_samples_to_discard = CONFIG_LSM6DSV16X_SAMPLES_TO_DISCARD;
@@ -189,7 +192,7 @@ int lsm6dsv16x_stop_acquisition()
 
 int lsm6dsv16x_start_calibration()
 {
-	int res = lsm6dsv16x_start_acquisition(true, false);
+	int res = lsm6dsv16x_start_acquisition(true, false, false);
 	if (res != 0)
 	{
 		LOG_ERR("Error while starting the sensor");
