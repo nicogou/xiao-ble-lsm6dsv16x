@@ -51,13 +51,13 @@ over-the-air with the Bluefruit Connect app.''')
         with zipfile.ZipFile(dest_path, 'r') as zip_ref:
             zip_ref.extractall(os.path.join(build_path, 'zephyr_ada_bl'))
 
-        if platform == 'linux':
+        if platform.system() == 'Windows':
             os.system('move ' + os.path.join(build_path, 'zephyr_ada_bl', 'zephyr.dat') + ' ' + os.path.join(build_path, 'zephyr.dat'))
             os.system('rmdir /s /q ' + os.path.join(build_path, 'zephyr_ada_bl'))
             os.system('del ' + dest_path)
-        elif platform == 'win32':
+        elif platform.system() == 'linux':
             os.system('cp ' + os.path.join(build_path, 'zephyr_ada_bl', 'zephyr.dat') + ' ' + os.path.join(build_path, 'zephyr.dat'))
-			os.system('rm -r ' + os.path.join(build_path, 'zephyr_ada_bl'))
-			os.system('rm ' + dest_path)
+            os.system('rm -r ' + os.path.join(build_path, 'zephyr_ada_bl'))
+            os.system('rm ' + dest_path)
 
         return
