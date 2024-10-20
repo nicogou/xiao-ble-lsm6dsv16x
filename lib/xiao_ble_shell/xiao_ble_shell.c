@@ -66,7 +66,45 @@ static int cmd_uf2(const struct shell *sh, size_t argc, char **argv)
 	return 0;
 }
 
-SHELL_CMD_REGISTER(uf2, NULL, "Switch Xiao BLE to UF2 bootloader mode.", cmd_uf2);
+static int cmd_ota(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_print(sh, "Switching Xiao BLE to OTA bootloader mode in 3");
+	k_msleep(500);
+	shell_print(sh, "                                             2");
+	k_msleep(500);
+	shell_print(sh, "                                             1");
+	NRF_POWER->GPREGRET = 0xA8; // 0xA8 OTA, 0x4e Serial
+	NVIC_SystemReset();
+
+	return 0;
+}
+
+static int cmd_serial(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_print(sh, "Switching Xiao BLE to Serial bootloader mode in 3");
+	k_msleep(500);
+	shell_print(sh, "                                             2");
+	k_msleep(500);
+	shell_print(sh, "                                             1");
+	NRF_POWER->GPREGRET = 0x4E; // 0xA8 OTA, 0x4e Serial
+	NVIC_SystemReset();
+
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_uf2,
+	SHELL_CMD(uf2, NULL, "Go into UF2 mode.", cmd_uf2),
+	SHELL_CMD(ota, NULL, "Go into OTA mode.", cmd_ota),
+	SHELL_CMD(serial, NULL, "Go into Serial mode.", cmd_serial),
+	SHELL_SUBCMD_SET_END /* Array terminated. */
+);
+SHELL_CMD_REGISTER(dfu, &sub_uf2, "Switch Xiao BLE to bootloader mode.", cmd_uf2);
 
 static int cmd_reset(const struct shell *sh, size_t argc, char **argv)
 {
