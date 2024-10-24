@@ -38,4 +38,13 @@ config THREAD_STACK_INFO
 config KERNEL_SHELL
 	default y
 
+config DATE_TIME
+	default y
+
+config DATE_TIME_MODEM
+	default n
+
+config DATE_TIME_NTP
+	default n
+
 endif # XIAO_BLE_SHELL
