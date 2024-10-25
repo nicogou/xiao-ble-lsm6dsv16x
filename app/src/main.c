@@ -15,10 +15,35 @@
 
 #include <app/lib/lsm6dsv16x.h>
 #include <app/lib/xiao_smp_bluetooth.h>
+#include <app/lib/xiao_ble_shell.h>
 
 #include <edge-impulse/impulse.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
+
+bool uf2_check(){
+	/* Add a check to see if the device is inside the enclosure.
+	 * Not really necessary as it will reboot if not connected on USB, but still.
+	 */
+	return true;
+}
+
+bool ota_check(){
+	return !battery_is_charging();
+}
+
+bool serial_check(){
+	/* Add a check to see if the device is inside the enclosure.
+	 * Not really necessary as it will reboot if not connected on USB, but still.
+	 */
+	return true;
+}
+
+xiao_ble_shell_cd_t shell_checks = {
+	.adafruit_bootloader_uf2_check = uf2_check,
+	.adafruit_bootloader_ota_check = ota_check,
+	.adafruit_bootloader_serial_check = serial_check,
+};
 
 struct line {
 	float_t acc_x;
@@ -207,6 +232,8 @@ static void calib_res_cb(float_t x, float_t y, float_t z)
 int main(void)
 {
 	int ret;
+
+	xiao_ble_shell_init(shell_checks);
 
 	battery_init();
 
