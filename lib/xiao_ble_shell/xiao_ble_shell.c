@@ -3,6 +3,12 @@
 #include <date_time.h>
 #include <stdlib.h>
 
+static xiao_ble_shell_cd_t callbacks = {
+	.adafruit_bootloader_uf2_check = NULL,
+	.adafruit_bootloader_ota_check = NULL,
+	.adafruit_bootloader_serial_check = NULL
+};
+
 static char* get_text(int magic_value) {
 	switch (magic_value)
 	{
@@ -19,16 +25,32 @@ static char* get_text(int magic_value) {
 }
 
 static int reset_into(const struct shell *sh, int magic_value) {
+	bool (*check)();
+
 	switch (magic_value)
 	{
 	case ADAFRUIT_BOOTLOADER_UF2:
+		check = callbacks.adafruit_bootloader_uf2_check;
+		break;
 	case ADAFRUIT_BOOTLOADER_OTA:
+		check = callbacks.adafruit_bootloader_ota_check;
+		break;
 	case ADAFRUIT_BOOTLOADER_SERIAL:
+		check = callbacks.adafruit_bootloader_serial_check;
 		break;
 
 	default:
 		shell_error(sh, "Wrong Magic Value used!");
 		return -EBADMSG;
+	}
+
+	if (check)
+	{
+		if (!check())
+		{
+			shell_warn(sh, "Cannot switch to %s bootloader mode!", get_text(magic_value));
+			return -EACCES;
+		}
 	}
 
 	// 0x57 UF2, 0xA8 OTA, 0x4e Serial
@@ -135,3 +157,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_date,
 );
 
 SHELL_CMD_REGISTER(time, &sub_date, "Get/Set Xiao BLE time.", NULL);
+
+void xiao_ble_shell_init(xiao_ble_shell_cd_t cb) {
+	callbacks = cb;
+}
