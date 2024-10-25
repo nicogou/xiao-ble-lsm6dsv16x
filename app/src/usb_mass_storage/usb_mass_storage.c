@@ -9,8 +9,17 @@
 #include <ff.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <app/lib/fit_sdk.h>
 
 LOG_MODULE_REGISTER(mass_storage, CONFIG_APP_LOG_LEVEL);
+
+struct fs_file_t fit_file;
+fit_sdk_file_mgmt_t file_mgmt = {
+	.fopen = (int (*)(void *, const char *, uint8_t))fs_open,
+	.fclose = (int (*)(void *))fs_close,
+	.fwrite = (_ssize_t (*)(void *, const void *, size_t))fs_write,
+	.fseek = (int (*)(void *, off_t, int))fs_seek,
+};
 
 static struct fs_mount_t fs_mnt;
 static struct fs_file_t current_session_file;
@@ -547,6 +556,10 @@ int usb_mass_storage_init() {
 	k_msleep(50); // Sleep to let Mass Storage some time to finish initing.
 
 #endif
+
+	fit_sdk_init(file_mgmt);
+	fs_file_t_init(&fit_file);
+	fit_sdk_test(&fit_file, "/NAND:/TEST.FIT", FS_O_CREATE | FS_O_RDWR);
 
 	LOG_INF("USB mass storage mounted at %s", fs_mnt.mnt_point);
 

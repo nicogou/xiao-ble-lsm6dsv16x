@@ -16,7 +16,6 @@
 #include <app/lib/lsm6dsv16x.h>
 #include <app/lib/xiao_smp_bluetooth.h>
 #include <app/lib/xiao_ble_shell.h>
-#include <app/lib/fit_sdk.h>
 
 #include <edge-impulse/impulse.h>
 
@@ -284,8 +283,6 @@ int main(void)
 	state_machine_init(starting_state);
 
 	impulse_init();
-
-	fit_sdk_init();
 
 	return state_machine_run();
 }
