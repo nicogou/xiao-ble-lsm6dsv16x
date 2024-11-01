@@ -7,6 +7,7 @@ typedef struct {
 	int (*fclose)(void* file_ptr);
 	_ssize_t (*fwrite)(void* file_ptr, const void *ptr, size_t size);
 	int (*fseek)(void* file_ptr, off_t offset, int whence);
+	int (*ftell)(void* file_ptr);
 } fit_sdk_file_mgmt_t;
 
 void fit_sdk_init(fit_sdk_file_mgmt_t file_mgmt);
