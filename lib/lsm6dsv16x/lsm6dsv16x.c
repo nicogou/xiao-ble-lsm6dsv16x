@@ -64,6 +64,8 @@ void calibration_timer_work_cb(struct k_work *work)
 		if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
 		{
 			(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(false, 0.0f, 0.0f, 0.0f);
+		} else {
+			LOG_ERR("No Calibration callback defined!");
 		}
 		break;
 
@@ -257,52 +259,6 @@ void lsm6dsv16x_int2_irq(struct k_work *item) {
     }
 }
 
-void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
-{
-	sensor.callbacks = cb;
-
-	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
-	if (res != 0) {
-		LOG_ERR("Error while attaching interrupt 1 %i", res);
-	}
-
-	res = attach_interrupt(imu_int_2, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_2_cb_data, imu_int_2_cb);
-	if (res != 0) {
-		LOG_ERR("Error while attaching interrupt 2 %i", res);
-	}
-
-	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
-	k_work_init(&imu_int2_work, lsm6dsv16x_int2_irq);
-
-	lsm6dsv16x_reset_t rst;
-
-	/* Initialize mems driver interface */
-	sensor.dev_ctx.write_reg = platform_write;
-	sensor.dev_ctx.read_reg = platform_read;
-	sensor.dev_ctx.mdelay = platform_delay;
-	sensor.dev_ctx.handle = NULL;
-
-	/* Init test platform */
-	platform_init(sensor.dev_ctx.handle);
-	/* Wait sensor boot time */
-	platform_delay(BOOT_TIME);
-	/* Check device ID */
-	lsm6dsv16x_device_id_get(&sensor.dev_ctx, &sensor.whoamI);
-
-	if (sensor.whoamI != LSM6DSV16X_ID) {
-		LOG_ERR("Error while fetching WHO_AM_I register. Received %#02x, expected %#02x", sensor.whoamI, LSM6DSV16X_ID);
-		return;
-	}
-
-	 /* Restore default configuration */
-  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
-	do {
-		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
-	} while (rst != LSM6DSV16X_READY);
-
-	sensor.state = LSM6DSV16X_IDLE;
-}
-
 static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 {
 	float quat[4];
@@ -315,6 +271,8 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 		case LSM6DSV16X_XL_NC_TAG:
 			if (sensor.callbacks.lsm6dsv16x_acc_sample_cb) {
 				(*sensor.callbacks.lsm6dsv16x_acc_sample_cb)(lsm6dsv16x_from_fs2_to_mg(*datax), lsm6dsv16x_from_fs2_to_mg(*datay), lsm6dsv16x_from_fs2_to_mg(*dataz));
+			} else {
+				LOG_ERR("No Accelerometer callback defined!");
 			}
 			break;
 
@@ -324,24 +282,32 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 				float_t argy = lsm6dsv16x_from_fs2000_to_mdps(*datay) - (gbias.gbias_y) / 1000.0f;
 				float_t argz = lsm6dsv16x_from_fs2000_to_mdps(*dataz) - (gbias.gbias_z) / 1000.0f;
 				(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(argx, argy, argz);
+			} else {
+				LOG_ERR("No Gyroscope callback defined!");
 			}
 			break;
 
 		case LSM6DSV16X_TIMESTAMP_TAG:
 			if (sensor.callbacks.lsm6dsv16x_ts_sample_cb) {
 				(*sensor.callbacks.lsm6dsv16x_ts_sample_cb)(lsm6dsv16x_from_lsb_to_nsec(*ts));
+			} else {
+				LOG_ERR("No Timestamp Bias callback defined!");
 			}
 			break;
 
 		case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
 			if (sensor.callbacks.lsm6dsv16x_gbias_sample_cb) {
 				(*sensor.callbacks.lsm6dsv16x_gbias_sample_cb)(lsm6dsv16x_from_fs125_to_mdps(*datax), lsm6dsv16x_from_fs125_to_mdps(*datay), lsm6dsv16x_from_fs125_to_mdps(*dataz));
+			} else {
+				LOG_ERR("No Gyroscope Bias callback defined!");
 			}
 			break;
 
 		case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG:
 			if (sensor.callbacks.lsm6dsv16x_gravity_sample_cb) {
 				(*sensor.callbacks.lsm6dsv16x_gravity_sample_cb)(lsm6dsv16x_from_sflp_to_mg(*datax), lsm6dsv16x_from_sflp_to_mg(*datay), lsm6dsv16x_from_sflp_to_mg(*dataz));
+			} else {
+				LOG_ERR("No Gravity callback defined!");
 			}
 			break;
 
@@ -349,6 +315,8 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 			sflp2q(quat, (uint16_t *)&f_data->data[0]);
 			if (sensor.callbacks.lsm6dsv16x_game_rot_sample_cb) {
 				(*sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)(quat[0], quat[1], quat[2], quat[3]);
+			} else {
+				LOG_ERR("No Game Rotation callback defined!");
 			}
 			break;
 
@@ -427,6 +395,88 @@ void lsm6dsv16x_int1_irq(struct k_work *item) {
 		if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
 		{
 			(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(calibration_result, gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
+		} else {
+			LOG_ERR("No Calibration callback defined!");
 		}
 	}
+}
+
+void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
+{
+	sensor.callbacks = cb;
+	if (!sensor.callbacks.lsm6dsv16x_ts_sample_cb)
+	{
+		LOG_ERR("No Timestamp callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_acc_sample_cb)
+	{
+		LOG_ERR("No Accelerometer callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_gyro_sample_cb)
+	{
+		LOG_ERR("No Gyrometer callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_gbias_sample_cb)
+	{
+		LOG_ERR("No Gyroscope Bias callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)
+	{
+		LOG_ERR("No Game Rotation callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_gravity_sample_cb)
+	{
+		LOG_ERR("No Gravity callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+	{
+		LOG_ERR("No Calibration callback defined!");
+	}
+
+	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
+	if (res != 0) {
+		LOG_ERR("Error while attaching interrupt 1 %i", res);
+	}
+
+	res = attach_interrupt(imu_int_2, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_2_cb_data, imu_int_2_cb);
+	if (res != 0) {
+		LOG_ERR("Error while attaching interrupt 2 %i", res);
+	}
+
+	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
+	k_work_init(&imu_int2_work, lsm6dsv16x_int2_irq);
+
+	lsm6dsv16x_reset_t rst;
+
+	/* Initialize mems driver interface */
+	sensor.dev_ctx.write_reg = platform_write;
+	sensor.dev_ctx.read_reg = platform_read;
+	sensor.dev_ctx.mdelay = platform_delay;
+	sensor.dev_ctx.handle = NULL;
+
+	/* Init test platform */
+	platform_init(sensor.dev_ctx.handle);
+	/* Wait sensor boot time */
+	platform_delay(BOOT_TIME);
+	/* Check device ID */
+	lsm6dsv16x_device_id_get(&sensor.dev_ctx, &sensor.whoamI);
+
+	if (sensor.whoamI != LSM6DSV16X_ID) {
+		LOG_ERR("Error while fetching WHO_AM_I register. Received %#02x, expected %#02x", sensor.whoamI, LSM6DSV16X_ID);
+		return;
+	}
+
+	 /* Restore default configuration */
+  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
+	do {
+		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
+	} while (rst != LSM6DSV16X_READY);
+
+	sensor.state = LSM6DSV16X_IDLE;
 }
