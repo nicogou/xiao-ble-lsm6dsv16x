@@ -37,3 +37,4 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len);
 int usb_mass_storage_check_calibration_file_contents(float *x, float *y, float *z);
 struct fs_file_t* usb_mass_storage_get_session_file_p();
 struct fs_file_t* usb_mass_storage_get_calibration_file_p();
+int usb_mass_storage_create_fit_example_file();
