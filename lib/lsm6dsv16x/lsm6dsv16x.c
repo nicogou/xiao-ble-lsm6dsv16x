@@ -45,12 +45,42 @@ void imu_int_2_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
     return;
 }
 
-static void _calibration_timer_cb(struct k_timer *dummy)
+static void _calibration_timer_cb(struct k_timer *dummy);
+K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
+
+void calibration_timer_work_cb(struct k_work *work)
 {
-	sensor.state = LSM6DSV16X_CALIBRATION_RECORDING;
+	switch (sensor.state)
+	{
+	case LSM6DSV16X_CALIBRATION_SETTLING:
+		// Start recording. Launch timer to see if calibration times out.
+		sensor.state = LSM6DSV16X_CALIBRATION_RECORDING;
+		k_timer_start(&calibration_timer, K_SECONDS(CONFIG_LSM6DSV16X_CALIBRATION_TIMEOUT), K_NO_WAIT);
+		break;
+
+	case LSM6DSV16X_CALIBRATION_RECORDING:
+		// If timer times out while calibration recording, we stop the calibration.
+		LOG_WRN("Calibration timed out, exiting calibration.");
+		if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+		{
+			(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(false, 0.0f, 0.0f, 0.0f);
+		} else {
+			LOG_ERR("No Calibration callback defined!");
+		}
+		break;
+
+	default:
+		LOG_WRN("Unhandled calibration timer callback...");
+		break;
+	}
 }
 
-K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
+K_WORK_DEFINE(calibration_timer_work, calibration_timer_work_cb);
+
+void _calibration_timer_cb(struct k_timer *dummy)
+{
+	k_work_submit(&calibration_timer_work);
+}
 
 int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enable_qvar)
 {
@@ -229,9 +259,185 @@ void lsm6dsv16x_int2_irq(struct k_work *item) {
     }
 }
 
+static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
+{
+	float quat[4];
+	int16_t *datax = (int16_t *)&f_data->data[0];
+	int16_t *datay = (int16_t *)&f_data->data[2];
+	int16_t *dataz = (int16_t *)&f_data->data[4];
+	int32_t *ts = (int32_t *)&f_data->data[0];
+
+	switch (f_data->tag) {
+		case LSM6DSV16X_XL_NC_TAG:
+			if (sensor.callbacks.lsm6dsv16x_acc_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_acc_sample_cb)(lsm6dsv16x_from_fs2_to_mg(*datax), lsm6dsv16x_from_fs2_to_mg(*datay), lsm6dsv16x_from_fs2_to_mg(*dataz));
+			} else {
+				LOG_ERR("No Accelerometer callback defined!");
+			}
+			break;
+
+		case LSM6DSV16X_GY_NC_TAG:
+			if (sensor.callbacks.lsm6dsv16x_gyro_sample_cb) {
+				float_t argx = lsm6dsv16x_from_fs2000_to_mdps(*datax) - (gbias.gbias_x) / 1000.0f;
+				float_t argy = lsm6dsv16x_from_fs2000_to_mdps(*datay) - (gbias.gbias_y) / 1000.0f;
+				float_t argz = lsm6dsv16x_from_fs2000_to_mdps(*dataz) - (gbias.gbias_z) / 1000.0f;
+				(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(argx, argy, argz);
+			} else {
+				LOG_ERR("No Gyroscope callback defined!");
+			}
+			break;
+
+		case LSM6DSV16X_TIMESTAMP_TAG:
+			if (sensor.callbacks.lsm6dsv16x_ts_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_ts_sample_cb)(lsm6dsv16x_from_lsb_to_nsec(*ts));
+			} else {
+				LOG_ERR("No Timestamp Bias callback defined!");
+			}
+			break;
+
+		case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
+			if (sensor.callbacks.lsm6dsv16x_gbias_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_gbias_sample_cb)(lsm6dsv16x_from_fs125_to_mdps(*datax), lsm6dsv16x_from_fs125_to_mdps(*datay), lsm6dsv16x_from_fs125_to_mdps(*dataz));
+			} else {
+				LOG_ERR("No Gyroscope Bias callback defined!");
+			}
+			break;
+
+		case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG:
+			if (sensor.callbacks.lsm6dsv16x_gravity_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_gravity_sample_cb)(lsm6dsv16x_from_sflp_to_mg(*datax), lsm6dsv16x_from_sflp_to_mg(*datay), lsm6dsv16x_from_sflp_to_mg(*dataz));
+			} else {
+				LOG_ERR("No Gravity callback defined!");
+			}
+			break;
+
+		case LSM6DSV16X_SFLP_GAME_ROTATION_VECTOR_TAG:
+			sflp2q(quat, (uint16_t *)&f_data->data[0]);
+			if (sensor.callbacks.lsm6dsv16x_game_rot_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)(quat[0], quat[1], quat[2], quat[3]);
+			} else {
+				LOG_ERR("No Game Rotation callback defined!");
+			}
+			break;
+
+		default:
+			LOG_WRN("Unhandled data (tag %u) received in FIFO", f_data->tag);
+			break;
+	}
+}
+
+static bool _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data, float_t* res)
+{
+	int16_t *datax = (int16_t *)&f_data->data[0];
+	int16_t *datay = (int16_t *)&f_data->data[2];
+	int16_t *dataz = (int16_t *)&f_data->data[4];
+	bool handled = false;
+
+	switch (f_data->tag) {
+		case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
+			res[0] = lsm6dsv16x_from_fs125_to_mdps(*datax);
+			res[1] = lsm6dsv16x_from_fs125_to_mdps(*datay);
+			res[2] = lsm6dsv16x_from_fs125_to_mdps(*dataz);
+			handled = true;
+			break;
+
+		default:
+			//LOG_WRN("Unhandled data (tag %u) received while calibrating IMU", f_data->tag);
+			break;
+	}
+
+	return handled;
+}
+
+void lsm6dsv16x_int1_irq(struct k_work *item) {
+
+	uint16_t num = 0;
+    lsm6dsv16x_fifo_status_t fifo_status;
+	float_t gbias_tmp[3];
+	bool calibration_result = false;
+
+	/* Read watermark flag */
+	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
+	num = fifo_status.fifo_level;
+
+	if (sensor.state != LSM6DSV16X_CALIBRATION_SETTLING) {
+		LOG_DBG("Received %d samples from FIFO.", num);
+	}
+
+	while (num--) {
+        lsm6dsv16x_fifo_out_raw_t f_data;
+
+        /* Read FIFO sensor value */
+        lsm6dsv16x_fifo_out_raw_get(&sensor.dev_ctx, &f_data);
+
+		if (sensor.nb_samples_to_discard) {
+			sensor.nb_samples_to_discard--;
+			continue;
+		}
+
+		if (sensor.state == LSM6DSV16X_RECORDING)
+		{
+			_data_handler_recording(&f_data);
+		} else if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING)
+		{
+			calibration_result = _data_handler_calibrating(&f_data, gbias_tmp);
+			if (calibration_result)
+			{
+				break;
+			}
+		}
+	}
+
+	if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING && calibration_result)
+	{
+		k_timer_stop(&calibration_timer);
+		lsm6dsv16x_stop_calibration();
+		if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+		{
+			(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(calibration_result, gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
+		} else {
+			LOG_ERR("No Calibration callback defined!");
+		}
+	}
+}
+
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 {
 	sensor.callbacks = cb;
+	if (!sensor.callbacks.lsm6dsv16x_ts_sample_cb)
+	{
+		LOG_ERR("No Timestamp callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_acc_sample_cb)
+	{
+		LOG_ERR("No Accelerometer callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_gyro_sample_cb)
+	{
+		LOG_ERR("No Gyrometer callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_gbias_sample_cb)
+	{
+		LOG_ERR("No Gyroscope Bias callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)
+	{
+		LOG_ERR("No Game Rotation callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_gravity_sample_cb)
+	{
+		LOG_ERR("No Gravity callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+	{
+		LOG_ERR("No Calibration callback defined!");
+	}
 
 	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
 	if (res != 0) {
@@ -273,128 +479,4 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 	} while (rst != LSM6DSV16X_READY);
 
 	sensor.state = LSM6DSV16X_IDLE;
-}
-
-static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
-{
-	float quat[4];
-	int16_t *datax = (int16_t *)&f_data->data[0];
-	int16_t *datay = (int16_t *)&f_data->data[2];
-	int16_t *dataz = (int16_t *)&f_data->data[4];
-	int32_t *ts = (int32_t *)&f_data->data[0];
-
-	switch (f_data->tag) {
-		case LSM6DSV16X_XL_NC_TAG:
-			if (sensor.callbacks.lsm6dsv16x_acc_sample_cb) {
-				(*sensor.callbacks.lsm6dsv16x_acc_sample_cb)(lsm6dsv16x_from_fs2_to_mg(*datax), lsm6dsv16x_from_fs2_to_mg(*datay), lsm6dsv16x_from_fs2_to_mg(*dataz));
-			}
-			break;
-
-		case LSM6DSV16X_GY_NC_TAG:
-			if (sensor.callbacks.lsm6dsv16x_gyro_sample_cb) {
-				float_t argx = lsm6dsv16x_from_fs2000_to_mdps(*datax) - (gbias.gbias_x) / 1000.0f;
-				float_t argy = lsm6dsv16x_from_fs2000_to_mdps(*datay) - (gbias.gbias_y) / 1000.0f;
-				float_t argz = lsm6dsv16x_from_fs2000_to_mdps(*dataz) - (gbias.gbias_z) / 1000.0f;
-				(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(argx, argy, argz);
-			}
-			break;
-
-		case LSM6DSV16X_TIMESTAMP_TAG:
-			if (sensor.callbacks.lsm6dsv16x_ts_sample_cb) {
-				(*sensor.callbacks.lsm6dsv16x_ts_sample_cb)(lsm6dsv16x_from_lsb_to_nsec(*ts));
-			}
-			break;
-
-		case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
-			if (sensor.callbacks.lsm6dsv16x_gbias_sample_cb) {
-				(*sensor.callbacks.lsm6dsv16x_gbias_sample_cb)(lsm6dsv16x_from_fs125_to_mdps(*datax), lsm6dsv16x_from_fs125_to_mdps(*datay), lsm6dsv16x_from_fs125_to_mdps(*dataz));
-			}
-			break;
-
-		case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG:
-			if (sensor.callbacks.lsm6dsv16x_gravity_sample_cb) {
-				(*sensor.callbacks.lsm6dsv16x_gravity_sample_cb)(lsm6dsv16x_from_sflp_to_mg(*datax), lsm6dsv16x_from_sflp_to_mg(*datay), lsm6dsv16x_from_sflp_to_mg(*dataz));
-			}
-			break;
-
-		case LSM6DSV16X_SFLP_GAME_ROTATION_VECTOR_TAG:
-			sflp2q(quat, (uint16_t *)&f_data->data[0]);
-			if (sensor.callbacks.lsm6dsv16x_game_rot_sample_cb) {
-				(*sensor.callbacks.lsm6dsv16x_game_rot_sample_cb)(quat[0], quat[1], quat[2], quat[3]);
-			}
-			break;
-
-		default:
-			LOG_WRN("Unhandled data (tag %u) received in FIFO", f_data->tag);
-			break;
-	}
-}
-
-static bool _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data, float_t* res)
-{
-	int16_t *datax = (int16_t *)&f_data->data[0];
-	int16_t *datay = (int16_t *)&f_data->data[2];
-	int16_t *dataz = (int16_t *)&f_data->data[4];
-	bool handled = false;
-
-	switch (f_data->tag) {
-		case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
-			res[0] = lsm6dsv16x_from_fs125_to_mdps(*datax);
-			res[1] = lsm6dsv16x_from_fs125_to_mdps(*datay);
-			res[2] = lsm6dsv16x_from_fs125_to_mdps(*dataz);
-			handled = true;
-			break;
-
-		default:
-			//LOG_WRN("Unhandled data (tag %u) received while calibrating IMU", f_data->tag);
-			break;
-	}
-
-	return handled;
-}
-
-void lsm6dsv16x_int1_irq(struct k_work *item) {
-
-	uint16_t num = 0;
-    lsm6dsv16x_fifo_status_t fifo_status;
-	float_t gbias_tmp[3];
-	bool res = false;
-
-	/* Read watermark flag */
-	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
-	num = fifo_status.fifo_level;
-
-	if (sensor.state != LSM6DSV16X_CALIBRATION_SETTLING) {
-		LOG_DBG("Received %d samples from FIFO.", num);
-	}
-
-	while (num--) {
-        lsm6dsv16x_fifo_out_raw_t f_data;
-
-        /* Read FIFO sensor value */
-        lsm6dsv16x_fifo_out_raw_get(&sensor.dev_ctx, &f_data);
-
-		if (sensor.nb_samples_to_discard) {
-			sensor.nb_samples_to_discard--;
-			continue;
-		}
-
-		if (sensor.state == LSM6DSV16X_RECORDING)
-		{
-			_data_handler_recording(&f_data);
-		} else if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING)
-		{
-			res = _data_handler_calibrating(&f_data, gbias_tmp);
-			if (res)
-			{
-				break;
-			}
-		}
-	}
-
-	if (res && sensor.state == LSM6DSV16X_CALIBRATION_RECORDING && sensor.callbacks.lsm6dsv16x_calibration_result_cb)
-	{
-		lsm6dsv16x_stop_calibration();
-		(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
-	}
 }
