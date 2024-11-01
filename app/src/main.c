@@ -199,32 +199,38 @@ static void game_rot_received_cb(float_t x, float_t y, float_t z, float_t w)
 	print_line_if_needed();
 }
 
-static void calib_res_cb(float_t x, float_t y, float_t z)
+static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 {
-	char txt[CALIBRATION_FILE_SIZE + 1]; // Leave room for a terminating NULL character.
-	int cnt = snprintf(txt, CALIBRATION_FILE_SIZE + 1, "x:%+07.2f\ny:%+07.2f\nz:%+07.2f", (double)x, (double)y, (double)z);
-	if (cnt != CALIBRATION_FILE_SIZE) {
-		LOG_ERR("Calibration file data is not the correct length! Expected %u, got %i", CALIBRATION_FILE_SIZE, cnt);
-	}
-	LOG_INF("Calibration succeeded. Gbias %s", txt);
-	int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
-	if (res != 0)
+	if (result)
 	{
-		LOG_ERR("Error creating calibration file (%i)", res);
-	} else {
-		res = usb_mass_storage_write_to_file(txt, strlen(txt), usb_mass_storage_get_calibration_file_p(), true);
-		if (res)
-		{
-			LOG_ERR("Failed to write to cal file (%i)", res);
+		char txt[CALIBRATION_FILE_SIZE + 1]; // Leave room for a terminating NULL character.
+		int cnt = snprintf(txt, CALIBRATION_FILE_SIZE + 1, "x:%+07.2f\ny:%+07.2f\nz:%+07.2f", (double)x, (double)y, (double)z);
+		if (cnt != CALIBRATION_FILE_SIZE) {
+			LOG_ERR("Calibration file data is not the correct length! Expected %u, got %i", CALIBRATION_FILE_SIZE, cnt);
 		}
-		res = usb_mass_storage_close_file(usb_mass_storage_get_calibration_file_p());
-		if (res)
+		LOG_INF("Calibration succeeded. Gbias %s", txt);
+		int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
+		if (res != 0)
 		{
-			LOG_ERR("Failed to close cal file (%i)", res);
+			LOG_ERR("Error creating calibration file (%i)", res);
+		} else {
+			res = usb_mass_storage_write_to_file(txt, strlen(txt), usb_mass_storage_get_calibration_file_p(), true);
+			if (res)
+			{
+				LOG_ERR("Failed to write to cal file (%i)", res);
+			}
+			res = usb_mass_storage_close_file(usb_mass_storage_get_calibration_file_p());
+			if (res)
+			{
+				LOG_ERR("Failed to close cal file (%i)", res);
+			}
 		}
-	}
 
-	lsm6dsv16x_set_gbias(x, y, z);
+		lsm6dsv16x_set_gbias(x, y, z);
+
+	} else {
+		LOG_ERR("Calibration timeout!");
+	}
 
 	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
 }

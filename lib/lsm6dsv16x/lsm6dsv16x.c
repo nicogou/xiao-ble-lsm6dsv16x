@@ -45,12 +45,40 @@ void imu_int_2_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
     return;
 }
 
-static void _calibration_timer_cb(struct k_timer *dummy)
+static void _calibration_timer_cb(struct k_timer *dummy);
+K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
+
+void calibration_timer_work_cb(struct k_work *work)
 {
-	sensor.state = LSM6DSV16X_CALIBRATION_RECORDING;
+	switch (sensor.state)
+	{
+	case LSM6DSV16X_CALIBRATION_SETTLING:
+		// Start recording. Launch timer to see if calibration times out.
+		sensor.state = LSM6DSV16X_CALIBRATION_RECORDING;
+		k_timer_start(&calibration_timer, K_SECONDS(CONFIG_LSM6DSV16X_CALIBRATION_TIMEOUT), K_NO_WAIT);
+		break;
+
+	case LSM6DSV16X_CALIBRATION_RECORDING:
+		// If timer times out while calibration recording, we stop the calibration.
+		LOG_WRN("Calibration timed out, exiting calibration.");
+		if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+		{
+			(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(false, 0.0f, 0.0f, 0.0f);
+		}
+		break;
+
+	default:
+		LOG_WRN("Unhandled calibration timer callback...");
+		break;
+	}
 }
 
-K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
+K_WORK_DEFINE(calibration_timer_work, calibration_timer_work_cb);
+
+void _calibration_timer_cb(struct k_timer *dummy)
+{
+	k_work_submit(&calibration_timer_work);
+}
 
 int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enable_qvar)
 {
@@ -358,7 +386,7 @@ void lsm6dsv16x_int1_irq(struct k_work *item) {
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
 	float_t gbias_tmp[3];
-	bool res = false;
+	bool calibration_result = false;
 
 	/* Read watermark flag */
 	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
@@ -384,17 +412,21 @@ void lsm6dsv16x_int1_irq(struct k_work *item) {
 			_data_handler_recording(&f_data);
 		} else if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING)
 		{
-			res = _data_handler_calibrating(&f_data, gbias_tmp);
-			if (res)
+			calibration_result = _data_handler_calibrating(&f_data, gbias_tmp);
+			if (calibration_result)
 			{
 				break;
 			}
 		}
 	}
 
-	if (res && sensor.state == LSM6DSV16X_CALIBRATION_RECORDING && sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+	if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING && calibration_result)
 	{
+		k_timer_stop(&calibration_timer);
 		lsm6dsv16x_stop_calibration();
-		(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
+		if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+		{
+			(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(calibration_result, gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
+		}
 	}
 }
