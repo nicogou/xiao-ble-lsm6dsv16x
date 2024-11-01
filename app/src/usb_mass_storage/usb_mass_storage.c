@@ -445,17 +445,17 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 
 		res= fs_seek(&current_session_file, -SESSION_WR_BUFFER_THRESHOLD, FS_SEEK_END);
 		if (res) {
-			LOG_WRN("test");
+			LOG_WRN("Could not seek current session file -SESSION_WR_BUFFER_THRESHOLD from end of file (%i)", res);
 		}
 		int size_read = fs_read(&current_session_file, read, SESSION_WR_BUFFER_THRESHOLD);
 		if (strncmp(read, session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD) != 0){
 			LOG_ERR("Corrupted data");
-			LOG_HEXDUMP_ERR(read, SESSION_WR_BUFFER_THRESHOLD, "read");
-			LOG_HEXDUMP_ERR(session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD, "read");
+			//LOG_HEXDUMP_ERR(read, SESSION_WR_BUFFER_THRESHOLD, "read");
+			//LOG_HEXDUMP_ERR(session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD, "read");
 		}
 		res = fs_seek(&current_session_file, 0, FS_SEEK_END);
 		if (res) {
-			LOG_ERR("yoohoo");
+			LOG_ERR("Could not seek back to end of file (%i)", res);
 		}
 
 		char tmp[SESSION_WR_BUFFER_SIZE];
