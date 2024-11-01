@@ -88,7 +88,8 @@ static void print_line_if_needed(){
 	float_t ei_input_data[3];
 
 	bool b;
-	if (state_machine_current_state() == RECORDING_SFLP || state_machine_current_state() == RECORDING_DATA_FORWARDER) {
+	xiao_recording_state_t recording_state = state_machine_get_recording_state();
+	if (recording_state.sflp_enabled) {
 		b = l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated;
 	} else {
 		b = l.acc_updated && l.gyro_updated && l.ts_updated;
@@ -105,7 +106,7 @@ static void print_line_if_needed(){
 		ei_input_data[2] = l.acc_z;
 
 		int res;
-		if (state_machine_current_state() == RECORDING_SFLP || state_machine_current_state() == RECORDING_DATA_FORWARDER) {
+		if (recording_state.sflp_enabled) {
 			res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
 		} else {
 			res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
@@ -114,9 +115,15 @@ static void print_line_if_needed(){
 			LOG_ERR("Encoding error happened (%i)", res);
 		}
 
-		if (state_machine_current_state() == RECORDING_DATA_FORWARDER)
+		if (recording_state.data_forwarder_enabled)
 		{
-			res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+			if (recording_state.sflp_enabled)
+			{
+				res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+			} else {
+				res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+			}
+
 			if (res < 0 && res >= TXT_SIZE) {
 				LOG_ERR("Encoding error happened for data forwarder (%i)", res);
 			}
@@ -130,7 +137,7 @@ static void print_line_if_needed(){
 			state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
 		}
 
-		if (state_machine_current_state() == RECORDING_IMPULSE)
+		if (state_machine_get_recording_state().edge_impulse_enabled)
 		{
 			impulse_add_data(ei_input_data, 3);
 		}
