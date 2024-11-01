@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: xiao-ble-lsm6dsv16x.git
+          token: ${{ secrets.CI_TOKEN}}
 
       - name: Prepare west project
         run: |
