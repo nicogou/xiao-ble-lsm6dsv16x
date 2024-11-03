@@ -249,7 +249,9 @@ int main(void)
 {
 	int ret;
 
+#if defined(CONFIG_XIAO_BLE_SHELL)
 	xiao_ble_shell_init(shell_checks);
+#endif
 
 	battery_init();
 

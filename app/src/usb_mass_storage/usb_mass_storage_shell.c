@@ -1,5 +1,3 @@
-#if CONFIG_XIAO_BLE_SHELL
-
 #include <zephyr/kernel.h>
 #include "usb_mass_storage.h"
 #include <zephyr/shell/shell.h>
@@ -59,5 +57,3 @@ static int cmd_fit(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_CMD_REGISTER(fit, NULL, "Storage commands", cmd_fit);
-
-#endif

@@ -1,5 +1,3 @@
-#if CONFIG_XIAO_BLE_SHELL
-
 #include <zephyr/kernel.h>
 #include "state_machine.h"
 #include <zephyr/shell/shell.h>
@@ -118,5 +116,3 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_emulating,
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 SHELL_CMD_REGISTER(emul, &sub_emulating, "Emulating commands", NULL);
-
-#endif
