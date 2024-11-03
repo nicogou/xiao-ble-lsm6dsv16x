@@ -27,3 +27,7 @@ manifest:
       remote: personal-repo
       revision: main
       path: xiao-ble-lsm6dsv16x.git/lib/fit_sdk/custom_fit_sdk
+    - name: zephyr_module_test
+      remote: personal-repo
+      revision: main
+      path: modules/zephyr_test_module

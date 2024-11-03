@@ -20,6 +20,8 @@
 
 #include <edge-impulse/impulse.h>
 
+#include <zephyr_module_test.h>
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 bool uf2_check(){
@@ -252,6 +254,8 @@ int main(void)
 #if defined(CONFIG_XIAO_BLE_SHELL)
 	xiao_ble_shell_init(shell_checks);
 #endif
+
+	zephyr_module_test_function();
 
 	battery_init();
 
