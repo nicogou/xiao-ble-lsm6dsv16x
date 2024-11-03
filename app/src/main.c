@@ -107,7 +107,7 @@ static void print_line_if_needed(){
 		ei_input_data[2] = l.acc_z;
 
 		int res;
-		if (state_machine_current_state() != EMULATING)
+		if (!recording_state.emulation_enabled) // Only save to flash memory if emulation is not enabled.
 		{
 			if (recording_state.sflp_enabled) {
 				res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
@@ -134,20 +134,13 @@ static void print_line_if_needed(){
 				res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
 			}
 
-			if (res < 0 && res >= TXT_SIZE) {
+			if (res < 0 || res >= TXT_SIZE) {
 				LOG_ERR("Encoding error happened for data forwarder (%i)", res);
 			}
 			printk("%s", data_forwarded);
 		}
 
-		res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
-
-		if (res < 0) {
-			LOG_ERR("Unable to write to session file, ending session");
-			state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
-		}
-
-		if (state_machine_get_recording_state().edge_impulse_enabled)
+		if (recording_state.edge_impulse_enabled)
 		{
 			impulse_add_data(ei_input_data, 3);
 		}

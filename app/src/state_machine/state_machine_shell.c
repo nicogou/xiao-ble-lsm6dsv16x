@@ -10,7 +10,7 @@ static int cmd_recording_start(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	xiao_recording_state_t wanted_state = {.sflp_enabled = false, .data_forwarder_enabled = false, .edge_impulse_enabled = false, .qvar_enabled = false};
+	xiao_recording_state_t wanted_state = {.sflp_enabled = false, .data_forwarder_enabled = false, .edge_impulse_enabled = false, .qvar_enabled = false, .emulation_enabled = false,};
 	for (int ii = 1; ii < argc; ii++)
 	{
 		if (strcmp(argv[ii], SFLP_STRING) == 0)
@@ -35,6 +35,12 @@ static int cmd_recording_start(const struct shell *sh, size_t argc, char **argv)
 		{
 			shell_print(sh, "QVar enabled");
 			wanted_state.qvar_enabled = true;
+		}
+
+		if (strcmp(argv[ii], EMULATION_STRING) == 0)
+		{
+			shell_print(sh, "Emulation enabled");
+			wanted_state.emulation_enabled = true;
 		}
 	}
 	state_machine_set_recording_state(wanted_state);
@@ -96,8 +102,8 @@ static int cmd_emulating_start(const struct shell *sh, size_t argc, char **argv)
 		return res;
 	}
 
-	state_machine_post_event(XIAO_EVENT_START_EMULATION);
-	shell_print(sh, "%s", "Emulation Start event posted");
+	char *cmd[2] = {"start", "emulation"};
+	cmd_recording_start(sh, 2, cmd);
 	return 0;
 }
 
@@ -106,8 +112,8 @@ static int cmd_emulating_stop(const struct shell *sh, size_t argc, char **argv)
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	state_machine_post_event(XIAO_EVENT_STOP_EMULATION);
-	shell_print(sh, "%s", "Emulation Stop event posted");
+	char *cmd[1] = {"stop"};
+	cmd_recording_stop(sh, 1, cmd);
 	return 0;
 }
 

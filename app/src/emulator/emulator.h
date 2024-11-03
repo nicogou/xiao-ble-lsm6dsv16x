@@ -3,6 +3,8 @@
 
 #define EMULATOR_THREAD_STACK_SIZE 1024
 #define EMULATOR_THREAD_PRIORITY 5
+#define EMULATOR_SESSION_HEADER_SIMPLE 7
+#define EMULATOR_SESSION_HEADER_SFLP 14
 
 typedef struct {
 	void (*emulator_ts_sample_cb)(float_t);
@@ -18,5 +20,5 @@ typedef struct {
 
 void emulator_init(emulator_cb_t cb);
 int emulator_set_session(char* file_path);
-void emulator_session_start();
+int emulator_session_start();
 void emulator_session_stop();

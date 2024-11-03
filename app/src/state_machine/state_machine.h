@@ -5,17 +5,16 @@
 /* List of events */
 typedef enum {
     XIAO_EVENT_START_RECORDING = BIT(0),
-    XIAO_EVENT_STOP_RECORDING = BIT(4),
-    XIAO_EVENT_START_CALIBRATION = BIT(5),
-    XIAO_EVENT_STOP_CALIBRATION = BIT(6),
-	XIAO_EVENT_START_EMULATION = BIT(7),
-	XIAO_EVENT_STOP_EMULATION = BIT(8),
+    XIAO_EVENT_STOP_RECORDING = BIT(1),
+    XIAO_EVENT_START_CALIBRATION = BIT(2),
+    XIAO_EVENT_STOP_CALIBRATION = BIT(3),
 } xiao_event_t;
 
 #define SFLP_STRING "sflp"
 #define DATA_FORWARDER_STRING "data_forwarder"
 #define EDGE_IMPULSE_STRING "edge_impulse"
 #define QVAR_STRING "qvar"
+#define EMULATION_STRING "emulation"
 
 typedef struct
 {
@@ -23,6 +22,7 @@ typedef struct
 	bool data_forwarder_enabled;
 	bool edge_impulse_enabled;
 	bool qvar_enabled;
+	bool emulation_enabled;
 } xiao_recording_state_t;
 
 /* List of states */
