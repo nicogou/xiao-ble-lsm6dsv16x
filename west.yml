@@ -17,7 +17,7 @@ manifest:
     - name: nrf
       remote: ncs
       repo-path: sdk-nrf
-      revision: v2.7.0
+      revision: main
       import: true
     - name: lsm6dsv16x-pid
       remote: st-lsm6dsv16x
