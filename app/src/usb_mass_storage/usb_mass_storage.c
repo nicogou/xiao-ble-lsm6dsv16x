@@ -9,8 +9,18 @@
 #include <ff.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <app/lib/fit_sdk.h>
 
 LOG_MODULE_REGISTER(mass_storage, CONFIG_APP_LOG_LEVEL);
+
+struct fs_file_t fit_file;
+fit_sdk_file_mgmt_t file_mgmt = {
+	.fopen = (int (*)(void *, const char *, uint8_t))fs_open,
+	.fclose = (int (*)(void *))fs_close,
+	.fwrite = (_ssize_t (*)(void *, const void *, size_t))fs_write,
+	.fseek = (int (*)(void *, off_t, int))fs_seek,
+	.ftell = (int (*)(void *))fs_tell,
+};
 
 static struct fs_mount_t fs_mnt;
 static struct fs_file_t current_session_file;
@@ -243,6 +253,73 @@ int usb_mass_storage_write_to_file(char* data, size_t len, struct fs_file_t *f, 
 	k_sem_give(&write_sem); // Give the semaphore back so that app can end session correctly.
 
 	return (res < 0 ? res : 0);
+}
+
+int usb_mass_storage_get_session_header(const char* path, struct fs_file_t *f)
+{
+	int ret = fs_open(f, path, FS_O_READ);
+	if (ret != 0) {
+		LOG_ERR("Failed to open file %s (%i)", path, ret);
+		return ret;
+	}
+
+	char file_content[strlen(SESSION_FILE_HEADER_SFLP)];
+	int size_read = fs_read(f, file_content, strlen(SESSION_FILE_HEADER_SFLP));
+	if (size_read < 0)
+	{
+		LOG_ERR("Failed to read session file %i", size_read);
+		return size_read;
+	}
+
+	if (strncmp(file_content, SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE)) == 0) {
+		ret = fs_seek(&current_session_file, strlen(SESSION_FILE_HEADER_SIMPLE), FS_SEEK_SET);
+		if (ret){
+			LOG_ERR("Error when seeking simple file %i", ret);
+		}
+		return SESSION_FILE_NB_COLUMN_SIMPLE;
+	} else if (strncmp(file_content, SESSION_FILE_HEADER_SFLP, strlen(SESSION_FILE_HEADER_SFLP)) == 0)
+	{
+		ret = fs_seek(&current_session_file, strlen(SESSION_FILE_HEADER_SFLP), FS_SEEK_SET);
+		if (ret){
+			LOG_ERR("Error when seeking SFLP file %i", ret);
+		}
+		return SESSION_FILE_NB_COLUMN_SFLP;
+	} else {
+		LOG_ERR("Session header not corresponding to a known file");
+		return -ENOTSUP;
+	}
+}
+
+int usb_mass_storage_read_line(char* data, size_t len, size_t offset, struct fs_file_t *f)
+{
+	char file_content[200];
+	int size_read = fs_read(f, file_content, len);
+	if (size_read < 0)
+	{
+		LOG_ERR("Failed to read session file %i", size_read);
+		data = NULL;
+		return size_read;
+	} else if (size_read == 0) {
+		LOG_ERR("Nothing read from file");
+		data = NULL;
+		return -EBADF;
+	}
+
+	for (int ii = 0; ii < size_read; ii++) {
+		if (file_content[ii] == '\n'){
+			memcpy(data, file_content, ii);
+
+			int ret = fs_seek(&current_session_file, -(size_read - (ii + 1)), FS_SEEK_CUR);
+			if (ret){
+				LOG_ERR("Error when seeking file %i", ret);
+			}
+			return ii;
+		}
+	}
+
+	LOG_WRN("Detected end of file");
+	data = NULL;
+	return -EBADF;
 }
 
 int usb_mass_storage_close_file(struct fs_file_t *f)
@@ -533,6 +610,12 @@ static void udc_status_cb(enum usb_dc_status_code status, const uint8_t *param) 
 	}
 }
 
+int usb_mass_storage_create_fit_example_file(){
+	fs_file_t_init(&fit_file);
+	fit_sdk_test(&fit_file, "/NAND:/TEST.FIT", FS_O_CREATE | FS_O_RDWR);
+	return 0;
+}
+
 int usb_mass_storage_init() {
 
 	setup_disk();
@@ -547,6 +630,8 @@ int usb_mass_storage_init() {
 	k_msleep(50); // Sleep to let Mass Storage some time to finish initing.
 
 #endif
+
+	fit_sdk_init(file_mgmt);
 
 	LOG_INF("USB mass storage mounted at %s", fs_mnt.mnt_point);
 

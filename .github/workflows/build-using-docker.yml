@@ -29,12 +29,16 @@ jobs:
           EI_API_KEY: ${{ secrets.EI_API_KEY }}
         run: |
           west build -b nicoco app -- -DEXTRA_CONF_FILE="debug.conf" -DEI_API_KEY_HEADER="x-api-key:$EI_API_KEY"
+          west prepare-dfu
 
       - name: Store hex files
         uses: actions/upload-artifact@v4
         with:
           name: built-applications
-          path: xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.uf2
+          path: |
+            xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.uf2
+            xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.hex
+            xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.dat
 
       - name: Twister Tests
         working-directory: xiao-ble-lsm6dsv16x.git

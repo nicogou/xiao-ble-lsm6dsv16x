@@ -24,6 +24,12 @@ config LSM6DSV16X_CALIBRATION_SETTLING_TIME
 	  In order to measure gyroscope bias, it is best to let the sensor rest to let the values settle on startup.
 	  This option configures the time in seconds between the start of the sensor, and the first gyroscope bias measurement.
 
+config LSM6DSV16X_CALIBRATION_TIMEOUT
+	int "Calibration timeout in seconds"
+	default 30
+	help
+	  This option configures the time in seconds after which the calibration is considered failed if we haven't received any data.
+
 if LSM6DSV16X
 
 config GPIO
