@@ -17,30 +17,25 @@ static int cmd_recording_start(const struct shell *sh, size_t argc, char **argv)
 		{
 			shell_print(sh, "SFLP enabled");
 			wanted_state.sflp_enabled = true;
-		}
-
-		if (strcmp(argv[ii], DATA_FORWARDER_STRING) == 0)
+		} else if (strcmp(argv[ii], DATA_FORWARDER_STRING) == 0)
 		{
 			shell_print(sh, "Data forwarder enabled");
 			wanted_state.data_forwarder_enabled = true;
-		}
-
-		if (strcmp(argv[ii], EDGE_IMPULSE_STRING) == 0)
+		} else if (strcmp(argv[ii], EDGE_IMPULSE_STRING) == 0)
 		{
 			shell_print(sh, "Edge Impulse enabled");
 			wanted_state.edge_impulse_enabled = true;
-		}
-
-		if (strcmp(argv[ii], QVAR_STRING) == 0)
+		}else if (strcmp(argv[ii], QVAR_STRING) == 0)
 		{
 			shell_print(sh, "QVar enabled");
 			wanted_state.qvar_enabled = true;
-		}
-
-		if (strcmp(argv[ii], EMULATION_STRING) == 0)
+		} else if (strcmp(argv[ii], EMULATION_STRING) == 0)
 		{
 			shell_print(sh, "Emulation enabled");
 			wanted_state.emulation_enabled = true;
+		} else {
+			shell_error(sh, "Unsupported option: %s", argv[ii]);
+			return -EBADF;
 		}
 	}
 	state_machine_set_recording_state(wanted_state);
