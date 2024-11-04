@@ -88,6 +88,7 @@
 		bootloader-led0 = &led0;
 		mcuboot-led0 = &led0;
 		watchdog0 = &wdt0;
+		charging = &charging;
 	};
 };
 

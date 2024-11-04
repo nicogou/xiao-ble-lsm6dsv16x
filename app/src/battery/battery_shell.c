@@ -1,5 +1,3 @@
-#if CONFIG_XIAO_BLE_SHELL
-
 #include <zephyr/kernel.h>
 #include "battery.h"
 #include <zephyr/shell/shell.h>
@@ -18,5 +16,3 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_battery,
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 SHELL_CMD_REGISTER(battery, &sub_battery, "Battery commands", NULL);
-
-#endif

@@ -42,7 +42,7 @@ const struct battery_level_point levels[] = {
 };
 
 static const struct gpio_dt_spec charging =
-    GPIO_DT_SPEC_GET_OR(CHARGING, gpios, {0});
+    GPIO_DT_SPEC_GET(CHARGING, gpios);
 
 static bool _charging_state;
 
@@ -176,6 +176,7 @@ static bool battery_ok;
 static int battery_setup(void)
 {
     int rc = divider_setup();
+	battery_ok = (rc == 0);
 	if (rc != 0) {
 	    LOG_ERR("Battery setup error: %d", rc);
 	}
@@ -205,6 +206,11 @@ int battery_measure_enable(bool enable)
 int battery_sample(void)
 {
     int rc = -ENOENT;
+
+	if (_charging_state) {
+		LOG_ERR("Cannot read battery while charging");
+		return -EACCES;
+	}
 
     if (battery_ok)
     {
@@ -270,8 +276,6 @@ unsigned int battery_level_pptt(unsigned int batt_mV,
 static void charging_event(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
     _charging_state = gpio_pin_get_dt(&charging);
-	LOG_DBG("GPIOTE Handler - _charging_state: %d", _charging_state);
-
     if (_charging_state)
     {
 		LOG_INF("Charging has started");
@@ -384,7 +388,7 @@ uint8_t battery_init()
     }
 
     // Starting the timer to make battery measurements regularly.
-    k_timer_start(&timer_battery, K_SECONDS(0), K_SECONDS(5));
+    k_timer_start(&timer_battery, K_SECONDS(0), K_SECONDS(60));
 
     return 1;
 }

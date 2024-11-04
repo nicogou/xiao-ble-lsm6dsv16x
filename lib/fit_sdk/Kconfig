@@ -1,0 +1,8 @@
+config FIT_SDK
+	bool "Support for the FIT file library"
+	help
+	  This option enables the FIT file library.
+
+module = FIT_SDK
+module-str = FIT_SDK
+source "subsys/logging/Kconfig.template.log_config"

@@ -5,6 +5,7 @@
 #include <app/lib/lsm6dsv16x.h>
 #include <usb_mass_storage/usb_mass_storage.h>
 #include <edge-impulse/impulse.h>
+#include <emulator/emulator.h>
 
 LOG_MODULE_REGISTER(state_machine, CONFIG_APP_LOG_LEVEL);
 
@@ -23,6 +24,7 @@ struct s_object {
 /* Forward declaration of state table */
 static const struct smf_state xiao_states[];
 static xiao_state_t current_state;
+static xiao_recording_state_t recording_state = {.sflp_enabled = false, .data_forwarder_enabled = false, .edge_impulse_enabled = false, .qvar_enabled = false, .emulation_enabled = false,};
 
 /* State IDLE */
 static void idle_entry(void *o)
@@ -38,12 +40,6 @@ static void idle_run(void *o)
     /* Change states on Button Press Event */
     if (s->events & XIAO_EVENT_START_RECORDING) {
         smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING]);
-    } else if (s->events & XIAO_EVENT_START_RECORDING_DATA_FORWARDER) {
-        smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING_DATA_FORWARDER]);
-    } else if (s->events & XIAO_EVENT_START_RECORDING_IMPULSE) {
-        smf_set_state(SMF_CTX(&s_obj), &xiao_states[RECORDING_IMPULSE]);
-    } else if (s->events & XIAO_EVENT_START_CALIBRATION) {
-        smf_set_state(SMF_CTX(&s_obj), &xiao_states[CALIBRATING]);
     } else {
         LOG_WRN("Unhandled event in IDLE state.");
     }
@@ -54,30 +50,41 @@ static void recording_entry(void *o)
 {
     LOG_INF("Entering RECORDING state.");
     current_state = RECORDING;
-	int res = usb_mass_storage_create_session();
-	if (res < 0) {
-		LOG_ERR("Unable to create session (%i)", res);
+	int res;
+
+	if (recording_state.emulation_enabled)
+	{
+		res = emulator_session_start();
+		if (res < 0){
+			LOG_ERR("Unable to start emulation (%i)", res);
+			return;
+		}
+	} else {
+		res = usb_mass_storage_create_session();
+		if (res < 0) {
+			LOG_ERR("Unable to create session (%i)", res);
+		}
+
+		if (recording_state.sflp_enabled || recording_state.data_forwarder_enabled)
+		{
+			res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SFLP, strlen(SESSION_FILE_HEADER_SFLP));
+			if (res != 0){
+				LOG_ERR("Failed to write session header to session file");
+			}
+		} else {
+			res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE));
+			if (res != 0){
+				LOG_ERR("Failed to write session header to session file");
+			}
+		}
+
+	    lsm6dsv16x_start_acquisition(false, recording_state.sflp_enabled, recording_state.qvar_enabled);
 	}
-    lsm6dsv16x_start_acquisition(false);
-}
 
-static void recording_simple_entry(void *o)
-{
-    LOG_INF("Entering RECORDING_SIMPLE state.");
-    current_state = RECORDING_SIMPLE;
-}
-
-static void data_forwarder_entry(void *o)
-{
-    LOG_INF("Entering RECORDING_DATA_FORWARDER state.");
-    current_state = RECORDING_DATA_FORWARDER;
-}
-
-static void impulse_entry(void *o)
-{
-    LOG_INF("Entering RECORDING_IMPULSE state.");
-    current_state = RECORDING_IMPULSE;
-	impulse_start_predicting();
+	if (recording_state.edge_impulse_enabled)
+	{
+		impulse_start_predicting();
+	}
 }
 
 static void recording_run(void *o)
@@ -92,53 +99,23 @@ static void recording_run(void *o)
     }
 }
 
-static void recording_simple_run(void *o)
-{
-	__unused struct s_object *s = (struct s_object *)o;
-
-	/* Use smf_set_handled to handle recording_simple specific events.
-	 * Events that are common to all recording states are handled in recording_run.
-	 */
-}
-
-static void recording_data_forwarder_run(void *o)
-{
-	__unused struct s_object *s = (struct s_object *)o;
-
-	/* Use smf_set_handled to handle recording_data_forwarder specific events.
-	 * Events that are common to all recording states are handled in recording_run.
-	 */
-}
-
-static void recording_impulse_run(void *o)
-{
-	__unused struct s_object *s = (struct s_object *)o;
-
-	/* Use smf_set_handled to handle recording_impulse specific events.
-	 * Events that are common to all recording states are handled in recording_run.
-	 */
-}
-
 static void recording_exit(void *o)
 {
-    lsm6dsv16x_stop_acquisition();
-	int res = usb_mass_storage_end_current_session();
-	if (res) {
-		LOG_ERR("Unable to end session (%i)", res);
+	if (recording_state.edge_impulse_enabled)
+	{
+		impulse_stop_predicting();
 	}
-}
 
-static void recording_simple_exit(void *o)
-{
-}
-
-static void data_forwarder_exit(void *o)
-{
-}
-
-static void impulse_exit(void *o)
-{
-	impulse_stop_predicting();
+	if (recording_state.emulation_enabled)
+	{
+		emulator_session_stop();
+	} else {
+		lsm6dsv16x_stop_acquisition();
+		int res = usb_mass_storage_end_current_session();
+		if (res) {
+			LOG_ERR("Unable to end session (%i)", res);
+		}
+	}
 }
 
 /* State CALIBRATING */
@@ -173,10 +150,7 @@ xiao_state_t state_machine_current_state(void) {
 /* Populate state table */
 static const struct smf_state xiao_states[] = {
     [IDLE] = SMF_CREATE_STATE(idle_entry, idle_run, NULL, NULL, NULL),
-    [RECORDING] = SMF_CREATE_STATE(recording_entry, recording_run, recording_exit, NULL, &xiao_states[RECORDING_SIMPLE]),
-    [RECORDING_SIMPLE] = SMF_CREATE_STATE(recording_simple_entry, recording_simple_run, recording_simple_exit, &xiao_states[RECORDING], NULL),
-    [RECORDING_DATA_FORWARDER] = SMF_CREATE_STATE(data_forwarder_entry, recording_data_forwarder_run, data_forwarder_exit, &xiao_states[RECORDING], NULL),
-    [RECORDING_IMPULSE] = SMF_CREATE_STATE(impulse_entry, recording_impulse_run, impulse_exit, &xiao_states[RECORDING], NULL),
+    [RECORDING] = SMF_CREATE_STATE(recording_entry, recording_run, recording_exit, NULL, NULL),
     [CALIBRATING] = SMF_CREATE_STATE(calibrating_entry, calibrating_run, calibrating_exit, NULL, NULL),
 };
 
@@ -185,6 +159,17 @@ int state_machine_post_event(xiao_event_t event)
     /* Post the event */
     k_event_post(&s_obj.smf_event, event);
     return 0;
+}
+
+int state_machine_set_recording_state(xiao_recording_state_t state)
+{
+	recording_state = state;
+	return 0;
+}
+
+xiao_recording_state_t state_machine_get_recording_state()
+{
+	return recording_state;
 }
 
 /* Initialize the state machine */

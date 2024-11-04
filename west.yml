@@ -10,6 +10,8 @@ manifest:
       url-base: https://github.com/nrfconnect
     - name: st-lsm6dsv16x
       url-base: https://github.com/STMicroelectronics
+    - name: personal-repo
+      url-base: https://github.com/nicogou/
 
   projects:
     - name: nrf
@@ -21,3 +23,7 @@ manifest:
       remote: st-lsm6dsv16x
       revision: main
       path: xiao-ble-lsm6dsv16x.git/lib/lsm6dsv16x/lsm6dsv16x-pid
+    - name: FIT-SDK
+      remote: personal-repo
+      revision: main
+      path: xiao-ble-lsm6dsv16x.git/lib/fit_sdk/custom_fit_sdk
