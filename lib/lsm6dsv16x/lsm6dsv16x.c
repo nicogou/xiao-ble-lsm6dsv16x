@@ -239,6 +239,42 @@ int lsm6dsv16x_stop_calibration() {
 	return lsm6dsv16x_stop_acquisition();
 }
 
+int lsm6dsv16x_start_significant_motion_detection()
+{
+		lsm6dsv16x_emb_pin_int_route_t pin_int = { 0 };
+
+	/* Enable Block Data Update */
+	lsm6dsv16x_block_data_update_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+
+	lsm6dsv16x_sigmot_mode_set(&sensor.dev_ctx, 1);
+
+	pin_int.sig_mot = PROPERTY_ENABLE;
+	lsm6dsv16x_emb_pin_int2_route_set(&sensor.dev_ctx, &pin_int);
+
+	//lsm6dsv16x_embedded_int_cfg_set(&sensor.dev_ctx, LSM6DSV16X_INT_LATCH_ENABLE);
+
+	/* Set Output Data Rate.*/
+	lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_120Hz);
+	/* Set full scale */
+	lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, LSM6DSV16X_2g);
+
+	sensor.state = LSM6DSV16X_SIGNIFICANT_MOTION;
+	return 0;
+}
+
+int lsm6dsv16x_stop_significant_motion_detection()
+{
+	lsm6dsv16x_reset_t rst;
+	/* Restore default configuration */
+  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
+	do {
+		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
+	} while (rst != LSM6DSV16X_READY);
+
+	sensor.state = LSM6DSV16X_IDLE;
+	return 0;
+}
+
 void lsm6dsv16x_set_gbias(float x, float y, float z)
 {
 	gbias.gbias_x = x * 1000.0f;
@@ -246,17 +282,35 @@ void lsm6dsv16x_set_gbias(float x, float y, float z)
 	gbias.gbias_z = z * 1000.0f;
 }
 
-void lsm6dsv16x_int2_irq(struct k_work *item) {
-	lsm6dsv16x_all_sources_t all_sources;
-	int16_t data;
+void lsm6dsv16x_int2_irq(struct k_work *item)
+{
+	if (sensor.state == LSM6DSV16X_SIGNIFICANT_MOTION)
+	{
+		lsm6dsv16x_all_sources_t all_sources;
+		int16_t data;
 
-	/* Read output only if new values are available */
-    lsm6dsv16x_all_sources_get(&sensor.dev_ctx, &all_sources);
-    if (all_sources.drdy_ah_qvar) {
-      lsm6dsv16x_ah_qvar_raw_get(&sensor.dev_ctx, &data);
+		/* Read output only if new values are available */
+		lsm6dsv16x_all_sources_get(&sensor.dev_ctx, &all_sources);
+		if (all_sources.drdy_ah_qvar) {
+			lsm6dsv16x_ah_qvar_raw_get(&sensor.dev_ctx, &data);
 
-	  LOG_DBG("QVAR [mV]:%6.2f", (double)lsm6dsv16x_from_lsb_to_mv(data));
-    }
+			LOG_DBG("QVAR [mV]:%6.2f", (double)lsm6dsv16x_from_lsb_to_mv(data));
+		}
+	}
+
+	if (sensor.state == LSM6DSV16X_SIGNIFICANT_MOTION)
+	{
+		lsm6dsv16x_embedded_status_t status;
+
+		/* Read output only if new xl value is available */
+		lsm6dsv16x_embedded_status_get(&sensor.dev_ctx, &status);
+		if (status.sig_mot)
+		{
+			if (sensor.callbacks.lsm6dsv16x_sigmot_cb) {
+				(*sensor.callbacks.lsm6dsv16x_sigmot_cb)();
+			}
+		}
+	}
 }
 
 static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
@@ -437,6 +491,11 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 	if (!sensor.callbacks.lsm6dsv16x_calibration_result_cb)
 	{
 		LOG_ERR("No Calibration callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_sigmot_cb)
+	{
+		LOG_ERR("No Significant Motion callback defined!");
 	}
 
 	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
