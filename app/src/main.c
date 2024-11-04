@@ -246,6 +246,12 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
 }
 
+static void sig_mot_cb()
+{
+	LOG_DBG("Significant Motion detected!");
+	state_machine_post_event(XIAO_EVENT_WAKE_UP);
+}
+
 static void on_connection_success() {
 	LOG_DBG("Connected");
 	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/0, /*Duration (s)*/1);
@@ -280,6 +286,7 @@ int main(void)
 		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
 		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
+		.lsm6dsv16x_sigmot_cb = sig_mot_cb,
 	};
 
 	xiao_smp_bluetooth_cb_t smp_callbacks = {
@@ -327,13 +334,13 @@ int main(void)
 
 #endif
 
-	start_smp_bluetooth_adverts(smp_callbacks);
-
-	state_machine_init(starting_state);
+	smp_bluetooth_init(smp_callbacks);
 
 	impulse_init();
 
 	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
+
+	state_machine_init(starting_state);
 
 	return state_machine_run();
 }

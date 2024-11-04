@@ -12,6 +12,7 @@ typedef enum {
 	LSM6DSV16X_RECORDING,
 	LSM6DSV16X_CALIBRATION_SETTLING,
 	LSM6DSV16X_CALIBRATION_RECORDING,
+	LSM6DSV16X_SIGNIFICANT_MOTION,
 } lsm6dsv16x_state_t;
 
 typedef struct {
@@ -22,6 +23,7 @@ typedef struct {
 	void (*lsm6dsv16x_game_rot_sample_cb)(float_t, float_t, float_t, float_t);
 	void (*lsm6dsv16x_gravity_sample_cb)(float_t, float_t, float_t);
 	void (*lsm6dsv16x_calibration_result_cb)(int, float_t, float_t, float_t);
+	void (*lsm6dsv16x_sigmot_cb)();
 } lsm6dsv16x_cb_t;
 
 typedef struct {
@@ -38,4 +40,6 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 int lsm6dsv16x_stop_acquisition();
 int lsm6dsv16x_start_calibration();
 int lsm6dsv16x_stop_calibration();
+int lsm6dsv16x_start_significant_motion_detection();
+int lsm6dsv16x_stop_significant_motion_detection();
 void lsm6dsv16x_set_gbias(float x, float y, float z);
