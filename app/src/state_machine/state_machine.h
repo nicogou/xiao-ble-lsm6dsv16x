@@ -8,6 +8,8 @@ typedef enum {
     XIAO_EVENT_STOP_RECORDING = BIT(1),
     XIAO_EVENT_START_CALIBRATION = BIT(2),
     XIAO_EVENT_STOP_CALIBRATION = BIT(3),
+    XIAO_EVENT_WAKE_UP = BIT(4),
+    XIAO_EVENT_SLEEP = BIT(5),
 } xiao_event_t;
 
 #define SFLP_STRING "sflp"
@@ -27,6 +29,7 @@ typedef struct
 
 /* List of states */
 typedef enum xiao_state {
+	OFF,
 	IDLE,
 	RECORDING,
 	CALIBRATING,

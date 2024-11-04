@@ -13,3 +13,7 @@ endmenu
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
+
+config IDLE_STATE_TIMEOUT
+	int "Time before SLEEP event."
+	default 60
