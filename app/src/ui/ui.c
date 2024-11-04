@@ -55,6 +55,11 @@ uint8_t ui_set_rgb_off()
     return ui_set_rgb_on(off.red, off.green, off.blue, off.blink, off.duration);
 }
 
+ui_rgb_t ui_get_rgb()
+{
+	return ui_color;
+}
+
 uint8_t ui_init()
 {
     if (!device_is_ready(red_pwm_led.dev) ||

@@ -6,6 +6,7 @@
 #include <usb_mass_storage/usb_mass_storage.h>
 #include <edge-impulse/impulse.h>
 #include <emulator/emulator.h>
+#include <ui/ui.h>
 
 LOG_MODULE_REGISTER(state_machine, CONFIG_APP_LOG_LEVEL);
 
@@ -85,6 +86,9 @@ static void recording_entry(void *o)
 	{
 		impulse_start_predicting();
 	}
+
+	ui_rgb_t current_color = ui_get_rgb();
+	ui_set_rgb_on(current_color.red, current_color.green, current_color.blue, 50, 1);
 }
 
 static void recording_run(void *o)
@@ -116,6 +120,9 @@ static void recording_exit(void *o)
 			LOG_ERR("Unable to end session (%i)", res);
 		}
 	}
+
+	ui_rgb_t current_color = ui_get_rgb();
+	ui_set_rgb_on(current_color.red, current_color.green, current_color.blue, 0, 1);
 }
 
 /* State CALIBRATING */
