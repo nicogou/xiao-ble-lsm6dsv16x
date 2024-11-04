@@ -19,6 +19,7 @@
 #include <app/lib/xiao_ble_shell.h>
 
 #include <edge-impulse/impulse.h>
+#include <ui/ui.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -245,6 +246,20 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
 }
 
+static void on_connection_success() {
+	LOG_DBG("Connected");
+	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/0, /*Duration (s)*/1);
+}
+
+static void on_connection_fail(uint8_t err) {
+	LOG_ERR("Connection failed (err 0x%02x)", err);
+}
+
+static void on_disconnection(uint8_t reason) {
+	LOG_INF("Disconnected (reason 0x%02x)", reason);
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
+}
+
 int main(void)
 {
 	int ret;
@@ -265,6 +280,12 @@ int main(void)
 		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
 		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
+	};
+
+	xiao_smp_bluetooth_cb_t smp_callbacks = {
+		.on_connection_success = on_connection_success,
+		.on_connection_fail = on_connection_fail,
+		.on_disconnection = on_disconnection,
 	};
 
 	lsm6dsv16x_init(callbacks);
@@ -306,11 +327,13 @@ int main(void)
 
 #endif
 
-	start_smp_bluetooth_adverts();
+	start_smp_bluetooth_adverts(smp_callbacks);
 
 	state_machine_init(starting_state);
 
 	impulse_init();
+
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 
 	return state_machine_run();
 }
