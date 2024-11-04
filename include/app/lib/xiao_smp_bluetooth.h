@@ -6,4 +6,6 @@ typedef struct {
 	void (*on_disconnection)(uint8_t);
 } xiao_smp_bluetooth_cb_t;
 
-void start_smp_bluetooth_adverts(xiao_smp_bluetooth_cb_t cb);
+void smp_bluetooth_init(xiao_smp_bluetooth_cb_t cb);
+int smp_bluetooth_start_advertising();
+int smp_bluetooth_stop_advertising();

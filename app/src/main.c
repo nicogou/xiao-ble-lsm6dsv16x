@@ -334,13 +334,13 @@ int main(void)
 
 #endif
 
-	start_smp_bluetooth_adverts(smp_callbacks);
-
-	state_machine_init(starting_state);
+	smp_bluetooth_init(smp_callbacks);
 
 	impulse_init();
 
 	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
+
+	state_machine_init(starting_state);
 
 	return state_machine_run();
 }

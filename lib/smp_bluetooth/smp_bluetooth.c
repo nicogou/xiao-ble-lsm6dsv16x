@@ -31,7 +31,10 @@ static void advertise(struct k_work *work)
 	bt_le_adv_stop();
 
 	rc = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
-	if (rc) {
+	if (rc == -EALREADY)
+	{
+		LOG_WRN("Advertising already started!");
+	} else if (rc) {
 		LOG_ERR("Advertising failed to start (rc %d)", rc);
 		return;
 	}
@@ -80,7 +83,7 @@ static void bt_ready(int err)
 	}
 }
 
-void start_smp_bluetooth_adverts(xiao_smp_bluetooth_cb_t cb)
+void smp_bluetooth_init(xiao_smp_bluetooth_cb_t cb)
 {
 	int rc;
 
@@ -92,4 +95,14 @@ void start_smp_bluetooth_adverts(xiao_smp_bluetooth_cb_t cb)
 	if (rc != 0) {
 		LOG_ERR("Bluetooth enable failed: %d", rc);
 	}
+}
+
+int smp_bluetooth_start_advertising()
+{
+	return k_work_submit(&advertise_work);
+}
+
+int smp_bluetooth_stop_advertising()
+{
+	return bt_le_adv_stop();
 }
