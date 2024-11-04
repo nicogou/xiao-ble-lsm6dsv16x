@@ -248,11 +248,7 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 
 static void on_connection_success() {
 	LOG_DBG("Connected");
-	ui_rgb_t color;
-	color.red = 0;
-	color.green = 0;
-	color.blue = UI_COLOR_MAX;
-	ui_set_rgb_on(&color);
+	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/0, /*Duration (s)*/1);
 }
 
 static void on_connection_fail(uint8_t err) {
@@ -261,11 +257,7 @@ static void on_connection_fail(uint8_t err) {
 
 static void on_disconnection(uint8_t reason) {
 	LOG_INF("Disconnected (reason 0x%02x)", reason);
-	ui_rgb_t color;
-	color.red = 0;
-	color.green = UI_COLOR_MAX;
-	color.blue = 0;
-	ui_set_rgb_on(&color);
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 }
 
 int main(void)
@@ -341,11 +333,7 @@ int main(void)
 
 	impulse_init();
 
-	ui_rgb_t color;
-	color.red = 0;
-	color.green = UI_COLOR_MAX;
-	color.blue = 0;
-	ui_set_rgb_on(&color);
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 
 	return state_machine_run();
 }

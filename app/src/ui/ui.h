@@ -24,7 +24,7 @@ typedef struct
 } ui_rgb_t;
 
 uint8_t ui_init();
-uint8_t ui_set_rgb_on(ui_rgb_t *color);
+uint8_t ui_set_rgb_on(uint16_t r, uint16_t g, uint16_t b, uint8_t k, uint8_t d);
 uint8_t ui_set_rgb_off();
 
 void button_resetsoft();

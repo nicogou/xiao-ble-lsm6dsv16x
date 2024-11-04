@@ -17,37 +17,42 @@ static const struct pwm_dt_spec blue_pwm_led =
     PWM_DT_SPEC_GET(DT_ALIAS(pwm_led2));
 
 static ui_rgb_t off = {0, 0, 0, 0};
-static ui_rgb_t red = {UI_COLOR_MAX, 0, 0, 0};
+static ui_rgb_t red = {UI_COLOR_MAX, 0, 0, 0, 1};
 
 static ui_rgb_t ui_color = {0, 0, 0, 0};
 
-uint8_t ui_set_rgb_on(ui_rgb_t *color)
+uint8_t ui_set_rgb_on(uint16_t r, uint16_t g, uint16_t b, uint8_t k, uint8_t d)
 {
-    if (color->red >= UI_COLOR_MAX)
+    if (r >= UI_COLOR_MAX)
     {
-        color->red = UI_COLOR_MAX;
+        r = UI_COLOR_MAX;
     }
-    if (color->green >= UI_COLOR_MAX)
+    if (g >= UI_COLOR_MAX)
     {
-        color->green = UI_COLOR_MAX;
+        g = UI_COLOR_MAX;
     }
-    if (color->blue >= UI_COLOR_MAX)
+    if (b >= UI_COLOR_MAX)
     {
-        color->blue = UI_COLOR_MAX;
+        b = UI_COLOR_MAX;
     }
+	if (d == 0)
+	{
+		LOG_WRN("Duration cannot be 0. Setting 1 second instead");
+		d = 1;
+	}
 
-    ui_color.red = color->red;
-    ui_color.green = color->green;
-    ui_color.blue = color->blue;
-    ui_color.blink = color->blink;
-    ui_color.duration = color->duration;
+    ui_color.red = r;
+    ui_color.green = g;
+    ui_color.blue = b;
+    ui_color.blink = k;
+    ui_color.duration = d;
 
-    return 1;
+    return 0;
 }
 
 uint8_t ui_set_rgb_off()
 {
-    return ui_set_rgb_on(&off);
+    return ui_set_rgb_on(off.red, off.green, off.blue, off.blink, off.duration);
 }
 
 uint8_t ui_init()
@@ -60,7 +65,7 @@ uint8_t ui_init()
         return 0;
     }
 
-    ui_set_rgb_on(&red);
+    ui_set_rgb_on(red.red, red.green, red.blink, red.blink, red.duration);
     return 1;
 }
 
