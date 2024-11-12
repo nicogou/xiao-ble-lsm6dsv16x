@@ -69,7 +69,7 @@ static void _parse_line(char* buf, size_t len)
 			}
 		}
 
-		emulated_session_waiting_time = (uint32_t)(1000.0 * (ts - last_ts));
+		emulated_session_waiting_time = (uint32_t)(1000.0f * (ts - last_ts));
 		last_ts = ts;
 	} else {
 		LOG_ERR("Wrong number of elements! Expected %u, got %u", session_type, cnt + 1);
