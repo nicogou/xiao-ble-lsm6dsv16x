@@ -18,7 +18,7 @@ add_subdirectory_ifdef(CONFIG_USB_MASS_STORAGE src/usb_mass_storage)
 add_subdirectory(src/state_machine)
 add_subdirectory(src/emulator)
 add_subdirectory(src/battery)
-add_subdirectory(src/edge-impulse)
+add_subdirectory_ifdef(CONFIG_EDGE_IMPULSE src/edge-impulse)
 add_subdirectory(src/ui)
 
 target_sources(app PRIVATE src/main.c)
