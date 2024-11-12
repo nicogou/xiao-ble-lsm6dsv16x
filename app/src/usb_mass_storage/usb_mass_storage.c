@@ -515,6 +515,10 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 			LOG_WRN("test");
 		}
 		int size_read = fs_read(&current_session_file, read, SESSION_WR_BUFFER_THRESHOLD);
+		if (size_read < 0)
+		{
+			LOG_ERR("Error while reading from file");
+		}
 		if (strncmp(read, session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD) != 0){
 			LOG_ERR("Corrupted data");
 			LOG_HEXDUMP_ERR(read, SESSION_WR_BUFFER_THRESHOLD, "read");

@@ -3,6 +3,7 @@
 #include <zephyr/logging/log.h>
 
 #include <app/lib/lsm6dsv16x.h>
+#include <app/lib/xiao_smp_bluetooth.h>
 #include <usb_mass_storage/usb_mass_storage.h>
 #include <edge-impulse/impulse.h>
 #include <emulator/emulator.h>
