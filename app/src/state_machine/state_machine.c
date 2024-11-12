@@ -135,10 +135,12 @@ static void recording_entry(void *o)
 	    lsm6dsv16x_start_acquisition(false, recording_state.sflp_enabled, recording_state.qvar_enabled);
 	}
 
+#ifdef CONFIG_EDGE_IMPULSE
 	if (recording_state.edge_impulse_enabled)
 	{
 		impulse_start_predicting();
 	}
+#endif
 
 	ui_rgb_t current_color = ui_get_rgb();
 	ui_set_rgb_on(current_color.red, current_color.green, current_color.blue, 50, 1);
@@ -158,10 +160,12 @@ static void recording_run(void *o)
 
 static void recording_exit(void *o)
 {
+#ifdef CONFIG_EDGE_IMPULSE
 	if (recording_state.edge_impulse_enabled)
 	{
 		impulse_stop_predicting();
 	}
+#endif
 
 	if (recording_state.emulation_enabled)
 	{

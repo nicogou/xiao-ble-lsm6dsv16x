@@ -141,10 +141,12 @@ static void print_line_if_needed(){
 			printk("%s", data_forwarded);
 		}
 
+#ifdef CONFIG_EDGE_IMPULSE
 		if (recording_state.edge_impulse_enabled)
 		{
 			impulse_add_data(ei_input_data, 3);
 		}
+#endif
 	}
 }
 
@@ -336,7 +338,9 @@ int main(void)
 
 	smp_bluetooth_init(smp_callbacks);
 
+#ifdef CONFIG_EDGE_IMPULSE
 	impulse_init();
+#endif
 
 	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 
