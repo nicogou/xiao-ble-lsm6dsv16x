@@ -22,6 +22,7 @@ jobs:
         run: |
           west init -l xiao-ble-lsm6dsv16x.git
           west update -o=--depth=1 -n
+          pip install adafruit-nrfutil
 
       - name: Build firmware
         working-directory: xiao-ble-lsm6dsv16x.git
