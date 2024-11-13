@@ -21,6 +21,10 @@
 #include <edge-impulse/impulse.h>
 #include <ui/ui.h>
 
+#ifdef CONFIG_LSM6DSV16X_FSM_ALG_1_CONFIG_FILE_PATH
+#include CONFIG_LSM6DSV16X_FSM_ALG_1_CONFIG_FILE_PATH
+#endif
+
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
 bool uf2_check(){
@@ -295,16 +299,14 @@ int main(void)
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
 		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
 		.lsm6dsv16x_sigmot_cb = sig_mot_cb,
-		.lsm6dsv16x_fsm_long_touch_cb = fsm_long_touch_cb,
+		.lsm6dsv16x_fsm_alg_1_cb = fsm_long_touch_cb,
 	};
 
-	xiao_smp_bluetooth_cb_t smp_callbacks = {
-		.on_connection_success = on_connection_success,
-		.on_connection_fail = on_connection_fail,
-		.on_disconnection = on_disconnection,
+	lsm6dsv16x_fsm_configs_t configs = {
+		.fsm_alg_1 = fsm_long_touch,
 	};
 
-	lsm6dsv16x_init(callbacks);
+	lsm6dsv16x_init(callbacks, configs);
 
 	emulator_cb_t emulator_callbacks = {
 		.emulator_ts_sample_cb = ts_received_cb,
@@ -342,6 +344,12 @@ int main(void)
 	}
 
 #endif
+
+	xiao_smp_bluetooth_cb_t smp_callbacks = {
+		.on_connection_success = on_connection_success,
+		.on_connection_fail = on_connection_fail,
+		.on_disconnection = on_disconnection,
+	};
 
 	smp_bluetooth_init(smp_callbacks);
 
