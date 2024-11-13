@@ -254,6 +254,12 @@ static void sig_mot_cb()
 	state_machine_post_event(XIAO_EVENT_WAKE_UP);
 }
 
+static void fsm_long_touch_cb(uint8_t state)
+{
+	LOG_WRN("FSM Long Touch callback called! State: %u", state);
+	return;
+}
+
 static void on_connection_success() {
 	LOG_DBG("Connected");
 	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/0, /*Duration (s)*/1);
@@ -289,6 +295,7 @@ int main(void)
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
 		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
 		.lsm6dsv16x_sigmot_cb = sig_mot_cb,
+		.lsm6dsv16x_fsm_long_touch_cb = fsm_long_touch_cb,
 	};
 
 	xiao_smp_bluetooth_cb_t smp_callbacks = {
@@ -345,6 +352,8 @@ int main(void)
 	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 
 	state_machine_init(starting_state);
+
+	lsm6dsv16x_start_fsm_long_touch();
 
 	return state_machine_run();
 }
