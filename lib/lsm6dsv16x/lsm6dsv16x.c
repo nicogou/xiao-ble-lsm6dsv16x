@@ -2,6 +2,10 @@
 #include "lsm6dsv16x_reg.h"
 #include "platform_interface/platform_interface.h"
 #include "lsm6dsv16x_sflp_utils.h"
+#include <zephyr/kernel.h>
+
+/* Include FSM configurations */
+#include "app/lib/fsm/fsm_long_touch.h"
 
 #include <zephyr/logging/log.h>
 
@@ -275,6 +279,38 @@ int lsm6dsv16x_stop_significant_motion_detection()
 	return 0;
 }
 
+int lsm6dsv16x_start_fsm_long_touch()
+{
+	/* Enable QVar now because it is not enabled by Unico configuration */
+	qvar_mode.ah_qvar_en = 1;
+	int ret = lsm6dsv16x_ah_qvar_mode_set(&sensor.dev_ctx, qvar_mode);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+	}
+
+	/* Start Finite State Machine configuration */
+	for (int ii = 0; ii < (sizeof(fsm_long_touch) / sizeof(ucf_line_t)); ii++ ) {
+		lsm6dsv16x_write_reg(&sensor.dev_ctx, fsm_long_touch[ii].address,
+						(uint8_t *)&fsm_long_touch[ii].data, 1);
+	}
+
+	sensor.state = LSM6DSV16X_FSM_LONG_TOUCH;
+	return 0;
+}
+
+int lsm6dsv16x_stop_fsm_long_touch()
+{
+	lsm6dsv16x_reset_t rst;
+	/* Restore default configuration */
+  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
+	do {
+		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
+	} while (rst != LSM6DSV16X_READY);
+
+	sensor.state = LSM6DSV16X_IDLE;
+	return 0;
+}
+
 void lsm6dsv16x_set_gbias(float x, float y, float z)
 {
 	gbias.gbias_x = x * 1000.0f;
@@ -308,6 +344,22 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 		{
 			if (sensor.callbacks.lsm6dsv16x_sigmot_cb) {
 				(*sensor.callbacks.lsm6dsv16x_sigmot_cb)();
+			}
+		}
+	}
+
+	if (sensor.state == LSM6DSV16X_FSM_LONG_TOUCH)
+	{
+		lsm6dsv16x_all_sources_t status;
+		lsm6dsv16x_fsm_out_t fsm_out;
+
+		/* Read output only if new xl value is available */
+		lsm6dsv16x_all_sources_get(&sensor.dev_ctx, &status);
+
+		if (status.fsm1) {
+			lsm6dsv16x_fsm_out_get(&sensor.dev_ctx, &fsm_out);
+			if (sensor.callbacks.lsm6dsv16x_fsm_long_touch_cb) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_long_touch_cb)(fsm_out.fsm_outs1);
 			}
 		}
 	}
@@ -496,6 +548,11 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 	if (!sensor.callbacks.lsm6dsv16x_sigmot_cb)
 	{
 		LOG_ERR("No Significant Motion callback defined!");
+	}
+
+	if (!sensor.callbacks.lsm6dsv16x_fsm_long_touch_cb)
+	{
+		LOG_ERR("No FSM Long Touch callback defined!");
 	}
 
 	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
