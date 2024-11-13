@@ -4,9 +4,6 @@
 #include "lsm6dsv16x_sflp_utils.h"
 #include <zephyr/kernel.h>
 
-/* Include FSM configurations */
-#include "app/lib/fsm/fsm_long_touch.h"
-
 #include <zephyr/logging/log.h>
 
 #if (!defined(CONFIG_LSM6DSV16X_SPI) && !defined(CONFIG_LSM6DSV16X_I2C))
@@ -289,9 +286,9 @@ int lsm6dsv16x_start_fsm_long_touch()
 	}
 
 	/* Start Finite State Machine configuration */
-	for (int ii = 0; ii < (sizeof(fsm_long_touch) / sizeof(ucf_line_t)); ii++ ) {
-		lsm6dsv16x_write_reg(&sensor.dev_ctx, fsm_long_touch[ii].address,
-						(uint8_t *)&fsm_long_touch[ii].data, 1);
+	for (int ii = 0; ii < (sizeof(sensor.fsm_configs.fsm_alg_1) / sizeof(ucf_line_t)); ii++ ) {
+		lsm6dsv16x_write_reg(&sensor.dev_ctx, sensor.fsm_configs.fsm_alg_1[ii].address,
+						(uint8_t *)&sensor.fsm_configs.fsm_alg_1[ii].data, 1);
 	}
 
 	sensor.state = LSM6DSV16X_FSM_LONG_TOUCH;
@@ -358,8 +355,8 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 
 		if (status.fsm1) {
 			lsm6dsv16x_fsm_out_get(&sensor.dev_ctx, &fsm_out);
-			if (sensor.callbacks.lsm6dsv16x_fsm_long_touch_cb) {
-				(*sensor.callbacks.lsm6dsv16x_fsm_long_touch_cb)(fsm_out.fsm_outs1);
+			if (sensor.callbacks.lsm6dsv16x_fsm_alg_1_cb) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_alg_1_cb)(fsm_out.fsm_outs1);
 			}
 		}
 	}
@@ -507,7 +504,7 @@ void lsm6dsv16x_int1_irq(struct k_work *item) {
 	}
 }
 
-void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
+void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_configs_t cfgs)
 {
 	sensor.callbacks = cb;
 	if (!sensor.callbacks.lsm6dsv16x_ts_sample_cb)
@@ -550,10 +547,17 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb)
 		LOG_ERR("No Significant Motion callback defined!");
 	}
 
-	if (!sensor.callbacks.lsm6dsv16x_fsm_long_touch_cb)
+	if (!sensor.callbacks.lsm6dsv16x_fsm_alg_1_cb)
 	{
 		LOG_ERR("No FSM Long Touch callback defined!");
 	}
+
+	sensor.fsm_configs.fsm_alg_1 = cfgs.fsm_alg_1;
+#ifdef CONFIG_LSM6DSV16X_FSM_ALG_1_CONFIG_FILE_PATH
+	if (!sensor.fsm_configs.fsm_alg_1) {
+		LOG_ERR("No Algorithm 1 defined");
+	}
+#endif
 
 	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
 	if (res != 0) {

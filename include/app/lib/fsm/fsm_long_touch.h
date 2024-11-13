@@ -12,8 +12,8 @@
   ******************************************************************************
   */
 
-#ifndef FSM_LONG_TOUCH_2_H
-#define FSM_LONG_TOUCH_2_H
+#ifndef FSM_LONG_TOUCH_H
+#define FSM_LONG_TOUCH_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ typedef struct {
 #endif /* MEMS_UCF_SHARED_TYPES */
 
 /** Configuration array generated from Unico Tool **/
-const ucf_line_t fsm_long_touch_2[] = {
+const ucf_line_t fsm_long_touch[] = {
   {.address = 0x10, .data = 0x00,},
   {.address = 0x11, .data = 0x00,},
   {.address = 0x01, .data = 0x80,},
@@ -99,5 +99,4 @@ const ucf_line_t fsm_long_touch_2[] = {
 }
 #endif
 
-#endif /* FSM_LONG_TOUCH_2_H */
-
+#endif /* FSM_LONG_TOUCH_H */
