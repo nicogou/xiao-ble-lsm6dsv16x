@@ -276,26 +276,48 @@ int lsm6dsv16x_stop_significant_motion_detection()
 	return 0;
 }
 
-int lsm6dsv16x_start_fsm_long_touch()
+/* fsm_alg_nb is an array containing the index of the algorithm to enable, n is the number of algorithm enabled.
+ * Nothing is done to ensure compatibility between FSM algorithms. It is the responsibility of the application
+ * to ensure that algorithms are compatible between them.
+ */
+int lsm6dsv16x_start_fsm(uint8_t* fsm_alg_nb, uint8_t n)
 {
-	/* Enable QVar now because it is not enabled by Unico configuration */
-	qvar_mode.ah_qvar_en = 1;
-	int ret = lsm6dsv16x_ah_qvar_mode_set(&sensor.dev_ctx, qvar_mode);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+	for (int ii = 0; ii < n; ii++)
+	{
+		if (fsm_alg_nb[ii] > LSM6DSV16X_FSM_ALG_MAX_NB)
+		{
+			LOG_ERR("FSM Algorithm number must be between 0 and 7! %u", fsm_alg_nb[ii]);
+			return -EINVAL;
+		}
+	}
+
+	for (int ii = 0; ii < n; ii++)
+	{
+		if (sensor.fsm_configs.fsm_pre_cfg_cbs[fsm_alg_nb[ii]])
+		{
+			int res = (*sensor.fsm_configs.fsm_pre_cfg_cbs[fsm_alg_nb[ii]])(sensor.dev_ctx);
+			if (res)
+			{
+				LOG_ERR("Pre config function for algorithm n°%u returned an error! %i", fsm_alg_nb[ii], res);
+				return res;
+			}
+		}
 	}
 
 	/* Start Finite State Machine configuration */
-	for (int ii = 0; ii < (sizeof(sensor.fsm_configs.fsm_alg_1) / sizeof(ucf_line_t)); ii++ ) {
-		lsm6dsv16x_write_reg(&sensor.dev_ctx, sensor.fsm_configs.fsm_alg_1[ii].address,
-						(uint8_t *)&sensor.fsm_configs.fsm_alg_1[ii].data, 1);
+	for (int ii = 0; ii < n; ii++)
+	{
+		for (int jj = 0; jj < (sensor.fsm_configs.fsm_ucf_cfg_size[fsm_alg_nb[ii]] / sizeof(ucf_line_t)); jj++ ) {
+			lsm6dsv16x_write_reg(&sensor.dev_ctx, sensor.fsm_configs.fsm_ucf_cfg[fsm_alg_nb[ii]][jj].address,
+							(uint8_t *)&sensor.fsm_configs.fsm_ucf_cfg[fsm_alg_nb[ii]][jj].data, 1);
+		}
 	}
 
-	sensor.state = LSM6DSV16X_FSM_LONG_TOUCH;
+	sensor.state = LSM6DSV16X_FSM;
 	return 0;
 }
 
-int lsm6dsv16x_stop_fsm_long_touch()
+int lsm6dsv16x_stop_fsm()
 {
 	lsm6dsv16x_reset_t rst;
 	/* Restore default configuration */
@@ -345,7 +367,7 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 		}
 	}
 
-	if (sensor.state == LSM6DSV16X_FSM_LONG_TOUCH)
+	if (sensor.state == LSM6DSV16X_FSM)
 	{
 		lsm6dsv16x_all_sources_t status;
 		lsm6dsv16x_fsm_out_t fsm_out;
@@ -353,10 +375,55 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 		/* Read output only if new xl value is available */
 		lsm6dsv16x_all_sources_get(&sensor.dev_ctx, &status);
 
-		if (status.fsm1) {
+		if (status.fsm1 || status.fsm2 || status.fsm3 || status.fsm4 || status.fsm5 || status.fsm6 || status.fsm7 || status.fsm8) {
 			lsm6dsv16x_fsm_out_get(&sensor.dev_ctx, &fsm_out);
-			if (sensor.callbacks.lsm6dsv16x_fsm_alg_1_cb) {
-				(*sensor.callbacks.lsm6dsv16x_fsm_alg_1_cb)(fsm_out.fsm_outs1);
+		}
+
+		if (status.fsm1) {
+			if (sensor.callbacks.lsm6dsv16x_fsm_cbs[0]) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[0])(fsm_out.fsm_outs1);
+			}
+		}
+
+		if (status.fsm2) {
+			if (sensor.callbacks.lsm6dsv16x_fsm_cbs[1]) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[1])(fsm_out.fsm_outs2);
+			}
+		}
+
+		if (status.fsm3) {
+			if (sensor.callbacks.lsm6dsv16x_fsm_cbs[2]) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[2])(fsm_out.fsm_outs3);
+			}
+		}
+
+		if (status.fsm4) {
+			if (sensor.callbacks.lsm6dsv16x_fsm_cbs[3]) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[3])(fsm_out.fsm_outs4);
+			}
+		}
+
+		if (status.fsm5) {
+			if (sensor.callbacks.lsm6dsv16x_fsm_cbs[4]) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[4])(fsm_out.fsm_outs5);
+			}
+		}
+
+		if (status.fsm6) {
+			if (sensor.callbacks.lsm6dsv16x_fsm_cbs[5]) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[5])(fsm_out.fsm_outs6);
+			}
+		}
+
+		if (status.fsm7) {
+			if (sensor.callbacks.lsm6dsv16x_fsm_cbs[6]) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[6])(fsm_out.fsm_outs7);
+			}
+		}
+
+		if (status.fsm8) {
+			if (sensor.callbacks.lsm6dsv16x_fsm_cbs[7]) {
+				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[7])(fsm_out.fsm_outs8);
 			}
 		}
 	}
@@ -504,7 +571,109 @@ void lsm6dsv16x_int1_irq(struct k_work *item) {
 	}
 }
 
-void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_configs_t cfgs)
+static void _check_fsm_callbacks()
+{
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_1
+	if (!sensor.callbacks.lsm6dsv16x_fsm_cbs[0]) {
+		LOG_ERR("No callback defined for algorithm %s", CONFIG_LSM6DSV16X_FSM_ALG_1_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_2
+	if (!sensor.callbacks.lsm6dsv16x_fsm_cbs[1]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_2_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_3
+	if (!sensor.callbacks.lsm6dsv16x_fsm_cbs[2]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_3_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_4
+	if (!sensor.callbacks.lsm6dsv16x_fsm_cbs[3]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_4_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_5
+	if (!sensor.callbacks.lsm6dsv16x_fsm_cbs[4]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_5_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_6
+	if (!sensor.callbacks.lsm6dsv16x_fsm_cbs[5]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_6_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_7
+	if (!sensor.callbacks.lsm6dsv16x_fsm_cbs[6]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_7_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_8
+	if (!sensor.callbacks.lsm6dsv16x_fsm_cbs[7]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_8_NAME);
+	}
+#endif
+}
+
+static void _check_fsm_config(const ucf_line_t* cfgs[LSM6DSV16X_FSM_ALG_MAX_NB])
+{
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_1
+	if (!sensor.fsm_configs.fsm_ucf_cfg[0]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_1_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_2
+	if (!sensor.fsm_configs.fsm_ucf_cfg[1]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_2_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_3
+	if (!sensor.fsm_configs.fsm_ucf_cfg[2]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_3_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_4
+	if (!sensor.fsm_configs.fsm_ucf_cfg[3]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_4_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_5
+	if (!sensor.fsm_configs.fsm_ucf_cfg[4]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_5_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_6
+	if (!sensor.fsm_configs.fsm_ucf_cfg[5]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_6_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_7
+	if (!sensor.fsm_configs.fsm_ucf_cfg[6]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_7_NAME);
+	}
+#endif
+
+#ifdef CONFIG_LSM6DSV16X_FSM_USE_ALG_8
+	if (!sensor.fsm_configs.fsm_ucf_cfg[7]) {
+		LOG_ERR("No %s configuration defined", CONFIG_LSM6DSV16X_FSM_ALG_8_NAME);
+	}
+#endif
+}
+
+void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 {
 	sensor.callbacks = cb;
 	if (!sensor.callbacks.lsm6dsv16x_ts_sample_cb)
@@ -547,17 +716,10 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_configs_t cfgs)
 		LOG_ERR("No Significant Motion callback defined!");
 	}
 
-	if (!sensor.callbacks.lsm6dsv16x_fsm_alg_1_cb)
-	{
-		LOG_ERR("No FSM Long Touch callback defined!");
-	}
+	_check_fsm_callbacks();
 
-	sensor.fsm_configs.fsm_alg_1 = cfgs.fsm_alg_1;
-#ifdef CONFIG_LSM6DSV16X_FSM_ALG_1_CONFIG_FILE_PATH
-	if (!sensor.fsm_configs.fsm_alg_1) {
-		LOG_ERR("No Algorithm 1 defined");
-	}
-#endif
+	sensor.fsm_configs = fsm_cfg;
+	_check_fsm_config(sensor.fsm_configs.fsm_ucf_cfg);
 
 	int res = attach_interrupt(imu_int_1, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_1_cb_data, imu_int_1_cb);
 	if (res != 0) {
