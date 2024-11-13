@@ -376,8 +376,5 @@ int main(void)
 
 	state_machine_init(starting_state);
 
-	uint8_t fsm_algs_to_start[1] = {0};
-	lsm6dsv16x_start_fsm(fsm_algs_to_start, 1);
-
 	return state_machine_run();
 }
