@@ -15,15 +15,13 @@
 #include <app_version.h>
 
 #include <app/lib/lsm6dsv16x.h>
+#include <app/lib/lsm6dsv16x_fsm_config.h> // Include FSM configuration files
 #include <app/lib/xiao_smp_bluetooth.h>
 #include <app/lib/xiao_ble_shell.h>
 
 #include <edge-impulse/impulse.h>
 #include <ui/ui.h>
 
-#ifdef CONFIG_LSM6DSV16X_FSM_ALG_1_CONFIG_FILE_PATH
-#include CONFIG_LSM6DSV16X_FSM_ALG_1_CONFIG_FILE_PATH
-#endif
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -258,6 +256,21 @@ static void sig_mot_cb()
 	state_machine_post_event(XIAO_EVENT_WAKE_UP);
 }
 
+static int fsm_long_touch_pre_cfg(stmdev_ctx_t ctx)
+{
+	lsm6dsv16x_ah_qvar_mode_t qvar_mode;
+
+	/* Enable QVar now because it is not enabled by Unico configuration */
+	qvar_mode.ah_qvar_en = 1;
+	int ret = lsm6dsv16x_ah_qvar_mode_set(&ctx, qvar_mode);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static void fsm_long_touch_cb(uint8_t state)
 {
 	LOG_WRN("FSM Long Touch callback called! State: %u", state);
@@ -299,14 +312,16 @@ int main(void)
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
 		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
 		.lsm6dsv16x_sigmot_cb = sig_mot_cb,
-		.lsm6dsv16x_fsm_alg_1_cb = fsm_long_touch_cb,
+		.lsm6dsv16x_fsm_cbs = {fsm_long_touch_cb, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 	};
 
-	lsm6dsv16x_fsm_configs_t configs = {
-		.fsm_alg_1 = fsm_long_touch,
+	lsm6dsv16x_fsm_cfg_t fsm_cfg = {
+		.fsm_ucf_cfg = 		{fsm_long_touch, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+		.fsm_ucf_cfg_size =	{sizeof(fsm_long_touch), 0, 0, 0, 0, 0, 0, 0},
+		.fsm_pre_cfg_cbs = 	{fsm_long_touch_pre_cfg, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 	};
 
-	lsm6dsv16x_init(callbacks, configs);
+	lsm6dsv16x_init(callbacks, fsm_cfg);
 
 	emulator_cb_t emulator_callbacks = {
 		.emulator_ts_sample_cb = ts_received_cb,
@@ -361,7 +376,8 @@ int main(void)
 
 	state_machine_init(starting_state);
 
-	lsm6dsv16x_start_fsm_long_touch();
+	uint8_t fsm_algs_to_start[1] = {0};
+	lsm6dsv16x_start_fsm(fsm_algs_to_start, 1);
 
 	return state_machine_run();
 }
