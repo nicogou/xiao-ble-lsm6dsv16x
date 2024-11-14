@@ -15,5 +15,5 @@ module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
 
 config IDLE_STATE_TIMEOUT
-	int "Time before SLEEP event."
+	int "Time before SLEEP event in seconds."
 	default 60
