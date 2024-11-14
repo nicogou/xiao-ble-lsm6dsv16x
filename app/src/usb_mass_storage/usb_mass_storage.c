@@ -463,6 +463,8 @@ int usb_mass_storage_end_current_session(){
         LOG_ERR("Semaphore not available!");
 		return -EINPROGRESS;
     }
+
+#ifdef CONFIG_CHECK_SESSION_DATA_AFTER
 	char read[SESSION_WR_BUFFER_THRESHOLD];
 
 	k_msleep(1000);
@@ -480,6 +482,7 @@ int usb_mass_storage_end_current_session(){
 			}
 		}
 	} while (size_read == SESSION_WR_BUFFER_THRESHOLD);
+#endif
 
 	int res = fs_close(&current_session_file);
 	if (res != 0) {
@@ -493,7 +496,6 @@ int usb_mass_storage_end_current_session(){
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
 	int res = 0;
-	char read[SESSION_WR_BUFFER_SIZE];
 
 	if (session_wr_buffer_len + len >= SESSION_WR_BUFFER_SIZE)
 	{
@@ -513,6 +515,9 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 			return res;
 		}
 
+#ifdef CONFIG_CHECK_SESSION_DATA_AFTER
+		char read[SESSION_WR_BUFFER_SIZE];
+
 		res= fs_seek(&current_session_file, -session_wr_buffer_len, FS_SEEK_END);
 		if (res) {
 			LOG_WRN("Error during seek (before checking)");
@@ -531,6 +536,7 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 		if (res) {
 			LOG_WRN("Error during seek (after checking)");
 		}
+#endif
 
 		// Resetting buffer after writing it to flash
 		session_wr_buffer_len = 0;
