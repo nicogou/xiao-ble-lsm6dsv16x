@@ -10,14 +10,18 @@
 #endif
 #include <state_machine/state_machine.h>
 #include <battery/battery.h>
+#include <emulator/emulator.h>
 
 #include <app_version.h>
 
 #include <app/lib/lsm6dsv16x.h>
+#include <app/lib/lsm6dsv16x_fsm_config.h> // Include FSM configuration files
 #include <app/lib/xiao_smp_bluetooth.h>
 #include <app/lib/xiao_ble_shell.h>
 
 #include <edge-impulse/impulse.h>
+#include <ui/ui.h>
+
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -88,7 +92,8 @@ static void print_line_if_needed(){
 	float_t ei_input_data[3];
 
 	bool b;
-	if (state_machine_current_state() == RECORDING_SFLP || state_machine_current_state() == RECORDING_DATA_FORWARDER) {
+	xiao_recording_state_t recording_state = state_machine_get_recording_state();
+	if (recording_state.sflp_enabled) {
 		b = l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated;
 	} else {
 		b = l.acc_updated && l.gyro_updated && l.ts_updated;
@@ -105,35 +110,45 @@ static void print_line_if_needed(){
 		ei_input_data[2] = l.acc_z;
 
 		int res;
-		if (state_machine_current_state() == RECORDING_SFLP || state_machine_current_state() == RECORDING_DATA_FORWARDER) {
-			res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
-		} else {
-			res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
-		}
-		if (res < 0 && res >= TXT_SIZE) {
-			LOG_ERR("Encoding error happened (%i)", res);
+		if (!recording_state.emulation_enabled) // Only save to flash memory if emulation is not enabled.
+		{
+			if (recording_state.sflp_enabled) {
+				res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+			} else {
+				res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+			}
+			if (res < 0 && res >= TXT_SIZE) {
+				LOG_ERR("Encoding error happened (%i)", res);
+			} else {
+				res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
+				if (res < 0) {
+					LOG_ERR("Unable to write to session file, ending session");
+					state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
+				}
+			}
 		}
 
-		if (state_machine_current_state() == RECORDING_DATA_FORWARDER)
+		if (recording_state.data_forwarder_enabled)
 		{
-			res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
-			if (res < 0 && res >= TXT_SIZE) {
+			if (recording_state.sflp_enabled)
+			{
+				res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+			} else {
+				res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+			}
+
+			if (res < 0 || res >= TXT_SIZE) {
 				LOG_ERR("Encoding error happened for data forwarder (%i)", res);
 			}
 			printk("%s", data_forwarded);
 		}
 
-		res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
-
-		if (res < 0) {
-			LOG_ERR("Unable to write to session file, ending session");
-			state_machine_post_event(XIAO_EVENT_STOP_RECORDING);
-		}
-
-		if (state_machine_current_state() == RECORDING_IMPULSE)
+#ifdef CONFIG_EDGE_IMPULSE
+		if (recording_state.edge_impulse_enabled)
 		{
 			impulse_add_data(ei_input_data, 3);
 		}
+#endif
 	}
 }
 
@@ -235,11 +250,54 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
 }
 
+static void sig_mot_cb()
+{
+	LOG_DBG("Significant Motion detected!");
+	state_machine_post_event(XIAO_EVENT_WAKE_UP);
+}
+
+static int fsm_long_touch_pre_cfg(stmdev_ctx_t ctx)
+{
+	lsm6dsv16x_ah_qvar_mode_t qvar_mode;
+
+	/* Enable QVar now because it is not enabled by Unico configuration */
+	qvar_mode.ah_qvar_en = 1;
+	int ret = lsm6dsv16x_ah_qvar_mode_set(&ctx, qvar_mode);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static void fsm_long_touch_cb(uint8_t state)
+{
+	LOG_WRN("FSM Long Touch callback called! State: %u", state);
+	return;
+}
+
+static void on_connection_success() {
+	LOG_DBG("Connected");
+	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/0, /*Duration (s)*/1);
+}
+
+static void on_connection_fail(uint8_t err) {
+	LOG_ERR("Connection failed (err 0x%02x)", err);
+}
+
+static void on_disconnection(uint8_t reason) {
+	LOG_INF("Disconnected (reason 0x%02x)", reason);
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
+}
+
 int main(void)
 {
 	int ret;
 
+#if defined(CONFIG_XIAO_BLE_SHELL)
 	xiao_ble_shell_init(shell_checks);
+#endif
 
 	battery_init();
 
@@ -253,9 +311,27 @@ int main(void)
 		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
 		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
+		.lsm6dsv16x_sigmot_cb = sig_mot_cb,
+		.lsm6dsv16x_fsm_cbs = {fsm_long_touch_cb, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 	};
 
-	lsm6dsv16x_init(callbacks);
+	lsm6dsv16x_fsm_cfg_t fsm_cfg = {
+		.fsm_ucf_cfg = 		{fsm_long_touch, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+		.fsm_ucf_cfg_size =	{sizeof(fsm_long_touch), 0, 0, 0, 0, 0, 0, 0},
+		.fsm_pre_cfg_cbs = 	{fsm_long_touch_pre_cfg, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	};
+
+	lsm6dsv16x_init(callbacks, fsm_cfg);
+
+	emulator_cb_t emulator_callbacks = {
+		.emulator_ts_sample_cb = ts_received_cb,
+		.emulator_acc_sample_cb = acc_received_cb,
+		.emulator_gyro_sample_cb = gyro_received_cb,
+		.emulator_gravity_sample_cb = gravity_received_cb,
+		.emulator_game_rot_sample_cb = game_rot_received_cb,
+	};
+
+	emulator_init(emulator_callbacks);
 
 	xiao_state_t starting_state = IDLE;
 
@@ -284,11 +360,21 @@ int main(void)
 
 #endif
 
-	start_smp_bluetooth_adverts();
+	xiao_smp_bluetooth_cb_t smp_callbacks = {
+		.on_connection_success = on_connection_success,
+		.on_connection_fail = on_connection_fail,
+		.on_disconnection = on_disconnection,
+	};
+
+	smp_bluetooth_init(smp_callbacks);
+
+#ifdef CONFIG_EDGE_IMPULSE
+	impulse_init();
+#endif
+
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 
 	state_machine_init(starting_state);
-
-	impulse_init();
 
 	return state_machine_run();
 }
