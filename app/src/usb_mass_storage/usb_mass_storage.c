@@ -520,7 +520,7 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 
 		res= fs_seek(&current_session_file, -session_wr_buffer_len, FS_SEEK_END);
 		if (res) {
-			LOG_WRN("Error during seek (before checking)");
+			LOG_WRN("Could not seek current session file -SESSION_WR_BUFFER_THRESHOLD from end of file (%i)", res);
 		}
 		int size_read = fs_read(&current_session_file, read, session_wr_buffer_len);
 		if (size_read < 0)
@@ -534,7 +534,7 @@ int usb_mass_storage_write_to_current_session(char* data, size_t len){
 		}
 		res = fs_seek(&current_session_file, 0, FS_SEEK_END);
 		if (res) {
-			LOG_WRN("Error during seek (after checking)");
+			LOG_ERR("Could not seek back to end of file (%i)", res);
 		}
 #endif
 
