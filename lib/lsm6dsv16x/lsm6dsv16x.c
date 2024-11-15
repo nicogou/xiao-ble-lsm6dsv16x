@@ -339,7 +339,7 @@ void lsm6dsv16x_set_gbias(float x, float y, float z)
 
 void lsm6dsv16x_int2_irq(struct k_work *item)
 {
-	if (sensor.state == LSM6DSV16X_SIGNIFICANT_MOTION)
+	if (sensor.state == LSM6DSV16X_RECORDING)
 	{
 		lsm6dsv16x_all_sources_t all_sources;
 		int16_t data;
