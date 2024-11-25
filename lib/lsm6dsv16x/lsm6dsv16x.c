@@ -332,9 +332,10 @@ int lsm6dsv16x_stop_fsm()
 
 void lsm6dsv16x_set_gbias(float x, float y, float z)
 {
-	gbias.gbias_x = x * 1000.0f;
-	gbias.gbias_y = y * 1000.0f;
-	gbias.gbias_z = z * 1000.0f;
+	// gbias needs to be in dps for lsm6dsv16x_sflp_game_gbias_set
+	gbias.gbias_x = x / 1000.0f;
+	gbias.gbias_y = y / 1000.0f;
+	gbias.gbias_z = z / 1000.0f;
 }
 
 void lsm6dsv16x_int2_irq(struct k_work *item)
@@ -450,9 +451,9 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 
 		case LSM6DSV16X_GY_NC_TAG:
 			if (sensor.callbacks.lsm6dsv16x_gyro_sample_cb) {
-				float_t argx = (*sensor.scale.gy_conversion_function)(*datax) - (gbias.gbias_x) / 1000.0f;
-				float_t argy = (*sensor.scale.gy_conversion_function)(*datay) - (gbias.gbias_y) / 1000.0f;
-				float_t argz = (*sensor.scale.gy_conversion_function)(*dataz) - (gbias.gbias_z) / 1000.0f;
+				float_t argx = (*sensor.scale.gy_conversion_function)(*datax) - (gbias.gbias_x) * 1000.0f;
+				float_t argy = (*sensor.scale.gy_conversion_function)(*datay) - (gbias.gbias_y) * 1000.0f;
+				float_t argz = (*sensor.scale.gy_conversion_function)(*dataz) - (gbias.gbias_z) * 1000.0f;
 				(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(argx, argy, argz);
 			} else {
 				LOG_ERR("No Gyroscope callback defined!");

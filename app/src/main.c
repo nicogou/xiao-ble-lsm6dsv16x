@@ -223,7 +223,7 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 		if (cnt != CALIBRATION_FILE_SIZE) {
 			LOG_ERR("Calibration file data is not the correct length! Expected %u, got %i", CALIBRATION_FILE_SIZE, cnt);
 		}
-		LOG_INF("Calibration succeeded. Gbias %s", txt);
+		LOG_INF("Calibration succeeded. Gbias: x:%+07.2f y:%+07.2f z:%+07.2f", (double)x, (double)y, (double)z);
 		int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
 		if (res != 0)
 		{
