@@ -97,7 +97,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 		LOG_ERR("lsm6dsv16x_block_data_update_set (%i)", ret);
 	}
 	/* Set full scale */
-	ret = lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, LSM6DSV16X_2g);
+	ret = lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, sensor.scale.xl_scale);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_xl_full_scale_set (%i)", ret);
 	}
@@ -257,7 +257,7 @@ int lsm6dsv16x_start_significant_motion_detection()
 	/* Set Output Data Rate.*/
 	lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_120Hz);
 	/* Set full scale */
-	lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, LSM6DSV16X_2g);
+	lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, sensor.scale.xl_scale);
 
 	sensor.state = LSM6DSV16X_SIGNIFICANT_MOTION;
 	return 0;
@@ -440,7 +440,9 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 	switch (f_data->tag) {
 		case LSM6DSV16X_XL_NC_TAG:
 			if (sensor.callbacks.lsm6dsv16x_acc_sample_cb) {
-				(*sensor.callbacks.lsm6dsv16x_acc_sample_cb)(lsm6dsv16x_from_fs2_to_mg(*datax), lsm6dsv16x_from_fs2_to_mg(*datay), lsm6dsv16x_from_fs2_to_mg(*dataz));
+				(*sensor.callbacks.lsm6dsv16x_acc_sample_cb)(	(*sensor.scale.xl_conversion_function)(*datax),
+																(*sensor.scale.xl_conversion_function)(*datay),
+																(*sensor.scale.xl_conversion_function)(*dataz));
 			} else {
 				LOG_ERR("No Accelerometer callback defined!");
 			}
@@ -673,6 +675,32 @@ static void _check_fsm_config(const ucf_line_t* cfgs[LSM6DSV16X_FSM_ALG_MAX_NB])
 #endif
 }
 
+static void lsm6dsv16x_scale_init(lsm6dsv16x_xl_full_scale_t xl)
+{
+	sensor.scale.xl_scale = xl;
+	switch (sensor.scale.xl_scale)
+	{
+	case LSM6DSV16X_2g:
+		sensor.scale.xl_conversion_function = lsm6dsv16x_from_fs2_to_mg;
+		break;
+	case LSM6DSV16X_4g:
+		sensor.scale.xl_conversion_function = lsm6dsv16x_from_fs4_to_mg;
+		break;
+	case LSM6DSV16X_8g:
+		sensor.scale.xl_conversion_function = lsm6dsv16x_from_fs8_to_mg;
+		break;
+	case LSM6DSV16X_16g:
+		sensor.scale.xl_conversion_function = lsm6dsv16x_from_fs16_to_mg;
+		break;
+
+	default:
+		LOG_WRN("%u is not a valid xl scale. Setting to %u", xl, LSM6DSV16X_4g);
+		sensor.scale.xl_scale = LSM6DSV16X_4g;
+		sensor.scale.xl_conversion_function = lsm6dsv16x_from_fs4_to_mg;
+		break;
+	}
+}
+
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 {
 	sensor.callbacks = cb;
@@ -754,11 +782,13 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 		return;
 	}
 
-	 /* Restore default configuration */
+	/* Restore default configuration */
   	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
 	do {
 		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
+
+	lsm6dsv16x_scale_init(LSM6DSV16X_4g);
 
 	sensor.state = LSM6DSV16X_IDLE;
 }
