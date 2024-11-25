@@ -51,6 +51,8 @@ typedef struct {
 typedef struct {
 	lsm6dsv16x_xl_full_scale_t xl_scale;
 	float_t (*xl_conversion_function)(int16_t);
+	lsm6dsv16x_gy_full_scale_t gy_scale;
+	float_t (*gy_conversion_function)(int16_t);
 } lsm6dsv16x_scale_t;
 
 typedef struct {

@@ -450,9 +450,9 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 
 		case LSM6DSV16X_GY_NC_TAG:
 			if (sensor.callbacks.lsm6dsv16x_gyro_sample_cb) {
-				float_t argx = lsm6dsv16x_from_fs2000_to_mdps(*datax) - (gbias.gbias_x) / 1000.0f;
-				float_t argy = lsm6dsv16x_from_fs2000_to_mdps(*datay) - (gbias.gbias_y) / 1000.0f;
-				float_t argz = lsm6dsv16x_from_fs2000_to_mdps(*dataz) - (gbias.gbias_z) / 1000.0f;
+				float_t argx = (*sensor.scale.gy_conversion_function)(*datax) - (gbias.gbias_x) / 1000.0f;
+				float_t argy = (*sensor.scale.gy_conversion_function)(*datay) - (gbias.gbias_y) / 1000.0f;
+				float_t argz = (*sensor.scale.gy_conversion_function)(*dataz) - (gbias.gbias_z) / 1000.0f;
 				(*sensor.callbacks.lsm6dsv16x_gyro_sample_cb)(argx, argy, argz);
 			} else {
 				LOG_ERR("No Gyroscope callback defined!");
@@ -469,6 +469,7 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 
 		case LSM6DSV16X_SFLP_GYROSCOPE_BIAS_TAG:
 			if (sensor.callbacks.lsm6dsv16x_gbias_sample_cb) {
+				// Gyroscope bias is always at +/-125dps sensitivity (see AN5763 bottom of page 104 §9.6.3)
 				(*sensor.callbacks.lsm6dsv16x_gbias_sample_cb)(lsm6dsv16x_from_fs125_to_mdps(*datax), lsm6dsv16x_from_fs125_to_mdps(*datay), lsm6dsv16x_from_fs125_to_mdps(*dataz));
 			} else {
 				LOG_ERR("No Gyroscope Bias callback defined!");
@@ -476,6 +477,7 @@ static void _data_handler_recording(lsm6dsv16x_fifo_out_raw_t* f_data)
 			break;
 
 		case LSM6DSV16X_SFLP_GRAVITY_VECTOR_TAG:
+			// Gravity vector is always at +/-2g sensitivity (see AN5763 bottom of page 104 §9.6.3)
 			if (sensor.callbacks.lsm6dsv16x_gravity_sample_cb) {
 				(*sensor.callbacks.lsm6dsv16x_gravity_sample_cb)(lsm6dsv16x_from_sflp_to_mg(*datax), lsm6dsv16x_from_sflp_to_mg(*datay), lsm6dsv16x_from_sflp_to_mg(*dataz));
 			} else {
@@ -675,7 +677,7 @@ static void _check_fsm_config(const ucf_line_t* cfgs[LSM6DSV16X_FSM_ALG_MAX_NB])
 #endif
 }
 
-static void lsm6dsv16x_scale_init(lsm6dsv16x_xl_full_scale_t xl)
+static void lsm6dsv16x_scale_init(lsm6dsv16x_xl_full_scale_t xl, lsm6dsv16x_gy_full_scale_t gy)
 {
 	sensor.scale.xl_scale = xl;
 	switch (sensor.scale.xl_scale)
@@ -697,6 +699,35 @@ static void lsm6dsv16x_scale_init(lsm6dsv16x_xl_full_scale_t xl)
 		LOG_WRN("%u is not a valid xl scale. Setting to %u", xl, LSM6DSV16X_4g);
 		sensor.scale.xl_scale = LSM6DSV16X_4g;
 		sensor.scale.xl_conversion_function = lsm6dsv16x_from_fs4_to_mg;
+		break;
+	}
+
+	sensor.scale.gy_scale = gy;
+	switch (sensor.scale.gy_scale)
+	{
+	case LSM6DSV16X_125dps:
+		sensor.scale.gy_conversion_function = lsm6dsv16x_from_fs125_to_mdps;
+		break;
+	case LSM6DSV16X_250dps:
+		sensor.scale.gy_conversion_function = lsm6dsv16x_from_fs250_to_mdps;
+		break;
+	case LSM6DSV16X_500dps:
+		sensor.scale.gy_conversion_function = lsm6dsv16x_from_fs500_to_mdps;
+		break;
+	case LSM6DSV16X_1000dps:
+		sensor.scale.gy_conversion_function = lsm6dsv16x_from_fs1000_to_mdps;
+		break;
+	case LSM6DSV16X_2000dps:
+		sensor.scale.gy_conversion_function = lsm6dsv16x_from_fs2000_to_mdps;
+		break;
+	case LSM6DSV16X_4000dps:
+		sensor.scale.gy_conversion_function = lsm6dsv16x_from_fs4000_to_mdps;
+		break;
+
+	default:
+		LOG_WRN("%u is not a valid gyroscope scale. Setting to %u", gy, LSM6DSV16X_2000dps);
+		sensor.scale.gy_scale = LSM6DSV16X_2000dps;
+		sensor.scale.gy_conversion_function = lsm6dsv16x_from_fs2000_to_mdps;
 		break;
 	}
 }
@@ -788,7 +819,7 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
 
-	lsm6dsv16x_scale_init(LSM6DSV16X_4g);
+	lsm6dsv16x_scale_init(LSM6DSV16X_4g, LSM6DSV16X_2000dps);
 
 	sensor.state = LSM6DSV16X_IDLE;
 }
