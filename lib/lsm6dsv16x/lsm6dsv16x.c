@@ -276,6 +276,31 @@ int lsm6dsv16x_stop_significant_motion_detection()
 	return 0;
 }
 
+int lsm6dsv16x_int2_to_int1(bool b){
+	int ret;
+	lsm6dsv16x_ctrl4_t ctrl4;
+	ret = lsm6dsv16x_read_reg(&sensor.dev_ctx, LSM6DSV16X_CTRL4, (uint8_t *)&ctrl4, 1);
+	if (ret) {
+		LOG_ERR("Read CTRL4 failed (%i)", ret);
+		return ret;
+	}
+
+	if (b)
+	{
+		ctrl4.int2_on_int1 = 1;
+	} else {
+		ctrl4.int2_on_int1 = 0;
+	}
+
+	ret = lsm6dsv16x_write_reg(&sensor.dev_ctx, LSM6DSV16X_CTRL4, (uint8_t *)&ctrl4, 1);
+	if (ret) {
+		LOG_ERR("Write CTRL4 failed (%i)", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 /* fsm_alg_nb is an array containing the index of the algorithm to enable, n is the number of algorithm enabled.
  * Nothing is done to ensure compatibility between FSM algorithms. It is the responsibility of the application
  * to ensure that algorithms are compatible between them.
