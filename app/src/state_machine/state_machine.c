@@ -48,7 +48,7 @@ static void off_entry(void *o)
 {
     LOG_INF("Entering OFF state.");
 	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/0, /*Blink (%)*/0, /*Duration (s)*/1); /* Turn off LED */
-	smp_bluetooth_stop_advertising();
+	//smp_bluetooth_stop_advertising();
 
     current_state = OFF;
 	lsm6dsv16x_start_significant_motion_detection();
@@ -78,7 +78,7 @@ static void idle_entry(void *o)
     current_state = IDLE;
     k_timer_start(&timer_state_machine, K_SECONDS(CONFIG_IDLE_STATE_TIMEOUT), K_NO_WAIT);
 	ui_set_rgb_on(/*Red*/0, /*Green*/UI_COLOR_MAX, /*Blue*/0, /*Blink (%)*/0, /*Duration (s)*/1); /* Turn off LED */
-	smp_bluetooth_start_advertising();
+	//smp_bluetooth_start_advertising();
 }
 
 static void idle_run(void *o)

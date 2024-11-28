@@ -1,0 +1,11 @@
+# Copyright (c) 2021, Legrand North America, LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+config XIAO_GOPRO_BLUETOOTH
+	bool "Support for Xiao BLE GoPro Bluetooth library"
+	help
+	  This option enables the Bluetooth Central library used to interact with a GoPro.
+
+module = XIAO_GOPRO_BLUETOOTH
+module-str = XIAO_GOPRO_BLUETOOTH
+source "subsys/logging/Kconfig.template.log_config"

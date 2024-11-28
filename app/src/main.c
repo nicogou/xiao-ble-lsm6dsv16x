@@ -17,6 +17,7 @@
 #include <app/lib/lsm6dsv16x.h>
 #include <app/lib/lsm6dsv16x_fsm_config.h> // Include FSM configuration files
 #include <app/lib/xiao_smp_bluetooth.h>
+#include <app/lib/xiao_gopro_bluetooth.h>
 #include <app/lib/xiao_ble_shell.h>
 
 #include <edge-impulse/impulse.h>
@@ -366,8 +367,8 @@ int main(void)
 		.on_disconnection = on_disconnection,
 	};
 
-	smp_bluetooth_init(smp_callbacks);
-
+	//smp_bluetooth_init(smp_callbacks);
+	gopro_bluetooth_init();
 #ifdef CONFIG_EDGE_IMPULSE
 	impulse_init();
 #endif

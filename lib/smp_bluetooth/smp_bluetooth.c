@@ -69,10 +69,12 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	k_work_submit(&advertise_work);
 }
 
+/*
 BT_CONN_CB_DEFINE(conn_callbacks) = {
 	.connected = connected,
 	.disconnected = disconnected,
 };
+*/
 
 static void bt_ready(int err)
 {
