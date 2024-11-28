@@ -13,7 +13,7 @@ jobs:
         # It is a workaround for GitHub Actions limitation https://github.com/actions/runner/issues/1964
         shell: bash
     steps:
-      - name: Checkout repository with example application
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: xiao-ble-lsm6dsv16x.git
