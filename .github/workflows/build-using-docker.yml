@@ -27,7 +27,7 @@ jobs:
       - name: Build firmware
         working-directory: xiao-ble-lsm6dsv16x.git
         run: |
-          west build -b nicoco app -- -DEXTRA_CONF_FILE="debug.conf"
+          west build -b nicoco app
           west prepare-dfu
 
       - name: Store hex files
