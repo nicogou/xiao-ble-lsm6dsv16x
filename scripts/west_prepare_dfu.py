@@ -55,11 +55,11 @@ over-the-air with the Bluefruit Connect app.''')
             os.system('move ' + os.path.join(build_path, 'zephyr_ada_bl', 'zephyr.dat') + ' ' + os.path.join(build_path, 'zephyr.dat'))
             os.system('rmdir /s /q ' + os.path.join(build_path, 'zephyr_ada_bl'))
             os.system('del ' + dest_path)
-        elif platform.system() == 'linux':
+        elif platform.system() == 'Linux':
             os.system('cp -v' + os.path.join(build_path, 'zephyr_ada_bl', 'zephyr.dat') + ' ' + os.path.join(build_path, 'zephyr.dat'))
             os.system('rm -r -v' + os.path.join(build_path, 'zephyr_ada_bl'))
             os.system('rm -v' + dest_path)
         else:
-            log.err('Platform not supported: ' platform.system())
+            log.err('Platform not supported: ' + platform.system())
 
         return
