@@ -2,7 +2,6 @@ common:
   tags: extensibility
   integration_platforms:
     - nicoco
-    - qemu_cortex_m0
 tests:
   lib.custom: {}
   lib.custom.non_default:
