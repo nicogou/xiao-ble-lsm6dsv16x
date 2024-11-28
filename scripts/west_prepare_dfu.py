@@ -56,8 +56,8 @@ over-the-air with the Bluefruit Connect app.''')
             os.system('rmdir /s /q ' + os.path.join(build_path, 'zephyr_ada_bl'))
             os.system('del ' + dest_path)
         elif platform.system() == 'linux':
-            os.system('cp ' + os.path.join(build_path, 'zephyr_ada_bl', 'zephyr.dat') + ' ' + os.path.join(build_path, 'zephyr.dat'))
-            os.system('rm -r ' + os.path.join(build_path, 'zephyr_ada_bl'))
-            os.system('rm ' + dest_path)
+            os.system('cp -v' + os.path.join(build_path, 'zephyr_ada_bl', 'zephyr.dat') + ' ' + os.path.join(build_path, 'zephyr.dat'))
+            os.system('rm -r -v' + os.path.join(build_path, 'zephyr_ada_bl'))
+            os.system('rm -v' + dest_path)
 
         return
