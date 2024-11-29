@@ -9,3 +9,4 @@ typedef struct {
 void smp_bluetooth_init(xiao_smp_bluetooth_cb_t cb);
 int smp_bluetooth_start_advertising();
 int smp_bluetooth_stop_advertising();
+bool smp_bluetooth_connected();
