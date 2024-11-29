@@ -16,7 +16,7 @@ static const struct pwm_dt_spec green_pwm_led =
 static const struct pwm_dt_spec blue_pwm_led =
     PWM_DT_SPEC_GET(DT_ALIAS(pwm_led2));
 
-static ui_rgb_t off = {0, 0, 0, 0};
+static ui_rgb_t off = {0, 0, 0, 0, 1};
 static ui_rgb_t red = {UI_COLOR_MAX, 0, 0, 0, 1};
 
 static ui_rgb_t ui_color = {0, 0, 0, 0};

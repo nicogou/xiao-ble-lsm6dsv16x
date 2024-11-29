@@ -47,7 +47,7 @@ K_TIMER_DEFINE(timer_state_machine, state_machine_timer_expired_cb, NULL);
 static void off_entry(void *o)
 {
     LOG_INF("Entering OFF state.");
-	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/0, /*Blink (%)*/0, /*Duration (s)*/1); /* Turn off LED */
+	ui_set_rgb_off(); /* Turn off LED */
 	smp_bluetooth_stop_advertising();
 
     current_state = OFF;
