@@ -13,6 +13,8 @@ LOG_MODULE_REGISTER(smp_bt, CONFIG_XIAO_SMP_BLUETOOTH_LOG_LEVEL);
 
 static struct k_work advertise_work;
 
+static bool connection_status = false;
+
 static xiao_smp_bluetooth_cb_t callbacks;
 
 static const struct bt_data ad[] = {
@@ -52,6 +54,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
 		}
 	} else {
 		LOG_INF("Connected");
+		connection_status = true;
 		if (callbacks.on_connection_success)
 		{
 			(*callbacks.on_connection_success)();
@@ -62,6 +65,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
 	LOG_INF("Disconnected (reason 0x%02x)", reason);
+	connection_status = false;
 	if (callbacks.on_disconnection)
 	{
 		(*callbacks.on_disconnection)(reason);
@@ -81,6 +85,11 @@ static void bt_ready(int err)
 	} else {
 		k_work_submit(&advertise_work);
 	}
+}
+
+bool smp_bluetooth_connected()
+{
+	return connection_status;
 }
 
 void smp_bluetooth_init(xiao_smp_bluetooth_cb_t cb)

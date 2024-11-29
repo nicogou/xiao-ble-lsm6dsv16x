@@ -77,7 +77,11 @@ static void idle_entry(void *o)
     LOG_INF("Entering IDLE state.");
     current_state = IDLE;
     k_timer_start(&timer_state_machine, K_SECONDS(CONFIG_IDLE_STATE_TIMEOUT), K_NO_WAIT);
-	ui_set_rgb_on(/*Red*/0, /*Green*/UI_COLOR_MAX, /*Blue*/0, /*Blink (%)*/0, /*Duration (s)*/1); /* Turn off LED */
+	ui_set_rgb_on(  /*Red*/0,
+                    /*Green*/smp_bluetooth_connected() ? 0 : UI_COLOR_MAX,
+                    /*Blue*/smp_bluetooth_connected() ? UI_COLOR_MAX : 0,
+                    /*Blink (%)*/0,
+                    /*Duration (s)*/1); /* Turn on LED */
 	smp_bluetooth_start_advertising();
 }
 
