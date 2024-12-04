@@ -49,12 +49,20 @@ typedef struct {
 } lsm6dsv16x_fsm_cfg_t;
 
 typedef struct {
+	lsm6dsv16x_xl_full_scale_t xl_scale;
+	float_t (*xl_conversion_function)(int16_t);
+	lsm6dsv16x_gy_full_scale_t gy_scale;
+	float_t (*gy_conversion_function)(int16_t);
+} lsm6dsv16x_scale_t;
+
+typedef struct {
 	stmdev_ctx_t dev_ctx;
 	uint8_t whoamI;
 	lsm6dsv16x_cb_t callbacks;
 	lsm6dsv16x_state_t state;
 	uint8_t nb_samples_to_discard;
 	lsm6dsv16x_fsm_cfg_t fsm_configs;
+	lsm6dsv16x_scale_t scale;
 } lsm6dsv16x_sensor_t;
 
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg);

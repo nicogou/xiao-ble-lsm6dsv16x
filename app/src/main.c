@@ -223,7 +223,7 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 		if (cnt != CALIBRATION_FILE_SIZE) {
 			LOG_ERR("Calibration file data is not the correct length! Expected %u, got %i", CALIBRATION_FILE_SIZE, cnt);
 		}
-		LOG_INF("Calibration succeeded. Gbias %s", txt);
+		LOG_INF("Calibration succeeded. Gbias: x:%+07.2f y:%+07.2f z:%+07.2f", (double)x, (double)y, (double)z);
 		int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
 		if (res != 0)
 		{
@@ -274,12 +274,16 @@ static int fsm_long_touch_pre_cfg(stmdev_ctx_t ctx)
 static void fsm_long_touch_cb(uint8_t state)
 {
 	LOG_WRN("FSM Long Touch callback called! State: %u", state);
+	if (state) {
+		state_machine_post_event(XIAO_EVENT_WAKE_UP);
+	}
 	return;
 }
 
 static void on_connection_success() {
 	LOG_DBG("Connected");
-	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/0, /*Duration (s)*/1);
+	ui_rgb_t current_color = ui_get_rgb();
+	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/current_color.blink, /*Duration (s)*/current_color.duration);
 }
 
 static void on_connection_fail(uint8_t err) {
@@ -288,7 +292,8 @@ static void on_connection_fail(uint8_t err) {
 
 static void on_disconnection(uint8_t reason) {
 	LOG_INF("Disconnected (reason 0x%02x)", reason);
-	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
+	ui_rgb_t current_color = ui_get_rgb();
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ current_color.blink, /*Duration (s)*/ current_color.duration);
 }
 
 int main(void)
