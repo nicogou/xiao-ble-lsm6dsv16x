@@ -60,6 +60,14 @@
 		cache-size = <4096>;
 	};
 
+	msc_disk1 {
+		status="okay";
+		compatible = "zephyr,flash-disk";
+		partition = <&storage_partition>;
+		disk-name = "LOGS";
+		cache-size = <4096>;
+	};
+
 	gpin {
 		compatible = "gpio-keys";
 
@@ -145,7 +153,7 @@
 
 		code_partition: partition@27000 {
 			label = "code_partition";
-			reg = <0x00027000 0x000c5000>;
+			reg = <0x00027000 0x000a5000>;
 		};
 
 		/*
@@ -157,7 +165,7 @@
 		 */
 		storage_partition: partition@ec000 {
 			label = "storage";
-			reg = <0x000ec000 0x00008000>;
+			reg = <0x000cc000 0x00028000>;
 		};
 
 		boot_partition: partition@f4000 {

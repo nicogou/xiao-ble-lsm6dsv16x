@@ -1,3 +1,30 @@
+sd_partition:
+  address: 0x0
+  region: flash_primary
+  size: 0x27000
+
+code_partition:
+  address: 0x27000
+  region: flash_primary
+  size: 0xa5000
+
+storage_partition:
+  affiliation: disk
+  extra_params: {
+      disk_name: "LOGS",
+      disk_cache_size: 4096,
+      disk_sector_size: 512,
+      disk_read_only: 0
+  }
+  address: 0x000cc000
+  region: flash_primary
+  size: 0x00028000
+
+#boot_partition:
+#  address: 0xf4000
+#  region: flash_primary
+#  size: 0xc000
+
 data_partition:
   affiliation: disk
   extra_params: {

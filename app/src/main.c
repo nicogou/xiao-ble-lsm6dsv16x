@@ -21,7 +21,7 @@
 
 #include <edge-impulse/impulse.h>
 #include <ui/ui.h>
-
+#include <log_fs/log_fs.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -380,6 +380,8 @@ int main(void)
 	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 
 	state_machine_init(starting_state);
+
+	log_fs_init();
 
 	return state_machine_run();
 }

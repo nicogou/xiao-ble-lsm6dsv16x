@@ -20,5 +20,7 @@ add_subdirectory(src/emulator)
 add_subdirectory(src/battery)
 add_subdirectory_ifdef(CONFIG_EDGE_IMPULSE src/edge-impulse)
 add_subdirectory(src/ui)
+#add_subdirectory_ifdef(CONFIG_LOG_BACKEND_FS src/log_fs)
+add_subdirectory(src/log_fs)
 
 target_sources(app PRIVATE src/main.c)
