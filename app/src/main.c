@@ -274,6 +274,9 @@ static int fsm_long_touch_pre_cfg(stmdev_ctx_t ctx)
 static void fsm_long_touch_cb(uint8_t state)
 {
 	LOG_WRN("FSM Long Touch callback called! State: %u", state);
+	if (state) {
+		state_machine_post_event(XIAO_EVENT_WAKE_UP);
+	}
 	return;
 }
 

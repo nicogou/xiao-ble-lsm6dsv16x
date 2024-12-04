@@ -52,6 +52,9 @@ static void off_entry(void *o)
 
     current_state = OFF;
 	lsm6dsv16x_start_significant_motion_detection();
+
+    uint8_t fsm_algs_to_start[1] = {0};
+	lsm6dsv16x_start_fsm(fsm_algs_to_start, 1);
 }
 
 static void off_run(void *o)
