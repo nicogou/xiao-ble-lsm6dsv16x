@@ -124,12 +124,20 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 		LOG_ERR("lsm6dsv16x_fifo_sflp_batch_set (%i)", ret);
 	}
 
+	uint8_t xl_sampling_frequency = LSM6DSV16X_XL_BATCHED_AT_60Hz;
+	uint8_t g_sampling_frequency = LSM6DSV16X_GY_BATCHED_AT_60Hz;
+	if (!enable_sflp)
+	{
+		xl_sampling_frequency = LSM6DSV16X_XL_BATCHED_AT_120Hz;
+		g_sampling_frequency = LSM6DSV16X_GY_BATCHED_AT_120Hz;
+	}
+
 	/* Set FIFO batch XL/Gyro ODR to 60Hz */
-	ret = lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
+	ret = lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, xl_sampling_frequency);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_xl_batch_set (%i)", ret);
 	}
-	ret = lsm6dsv16x_fifo_gy_batch_set(&sensor.dev_ctx, LSM6DSV16X_GY_BATCHED_AT_60Hz);
+	ret = lsm6dsv16x_fifo_gy_batch_set(&sensor.dev_ctx, g_sampling_frequency);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_gy_batch_set (%i)", ret);
 	}
@@ -154,10 +162,14 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_gy_data_rate_set (%i)", ret);
 	}
-	ret = lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_sflp_data_rate_set (%i)", ret);
+	if (enable_sflp || enable_gbias)
+	{
+		ret = lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_sflp_data_rate_set (%i)", ret);
+		}
 	}
+
 	ret = lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_1);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_timestamp_batch_set (%i)", ret);
@@ -166,14 +178,21 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_timestamp_set (%i)", ret);
 	}
-	ret = lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_sflp_game_rotation_set (%i)", ret);
+
+	if (enable_sflp)
+	{
+		ret = lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_sflp_game_rotation_set (%i)", ret);
+		}
 	}
 
-	ret = lsm6dsv16x_sflp_game_gbias_set(&sensor.dev_ctx, &gbias);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_sflp_game_gbias_set (%i)", ret);
+	if (enable_gbias)
+	{
+		ret = lsm6dsv16x_sflp_game_gbias_set(&sensor.dev_ctx, &gbias);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_sflp_game_gbias_set (%i)", ret);
+		}
 	}
 
 	sensor.state = LSM6DSV16X_RECORDING;
