@@ -285,12 +285,7 @@ int lsm6dsv16x_int2_to_int1(bool b){
 		return ret;
 	}
 
-	if (b)
-	{
-		ctrl4.int2_on_int1 = 1;
-	} else {
-		ctrl4.int2_on_int1 = 0;
-	}
+	ctrl4.int2_on_int1 = b ? 1 : 0;
 
 	ret = lsm6dsv16x_write_reg(&sensor.dev_ctx, LSM6DSV16X_CTRL4, (uint8_t *)&ctrl4, 1);
 	if (ret) {
