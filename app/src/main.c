@@ -274,12 +274,16 @@ static int fsm_long_touch_pre_cfg(stmdev_ctx_t ctx)
 static void fsm_long_touch_cb(uint8_t state)
 {
 	LOG_WRN("FSM Long Touch callback called! State: %u", state);
+	if (state) {
+		state_machine_post_event(XIAO_EVENT_WAKE_UP);
+	}
 	return;
 }
 
 static void on_connection_success() {
 	LOG_DBG("Connected");
-	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/0, /*Duration (s)*/1);
+	ui_rgb_t current_color = ui_get_rgb();
+	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/current_color.blink, /*Duration (s)*/current_color.duration);
 }
 
 static void on_connection_fail(uint8_t err) {
@@ -288,7 +292,8 @@ static void on_connection_fail(uint8_t err) {
 
 static void on_disconnection(uint8_t reason) {
 	LOG_INF("Disconnected (reason 0x%02x)", reason);
-	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
+	ui_rgb_t current_color = ui_get_rgb();
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ current_color.blink, /*Duration (s)*/ current_color.duration);
 }
 
 int main(void)

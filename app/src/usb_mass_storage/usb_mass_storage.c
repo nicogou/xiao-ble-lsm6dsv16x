@@ -49,8 +49,8 @@ static int setup_flash(struct fs_mount_t *mnt)
 	unsigned int id;
 	const struct flash_area *pfa;
 
-	mnt->storage_dev = (void *)STORAGE_PARTITION_ID;
-	id = STORAGE_PARTITION_ID;
+	mnt->storage_dev = (void *)DATA_PARTITION_ID;
+	id = DATA_PARTITION_ID;
 
 	rc = flash_area_open(id, &pfa);
 
