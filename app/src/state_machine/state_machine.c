@@ -51,10 +51,13 @@ static void off_entry(void *o)
 	smp_bluetooth_stop_advertising();
 
     current_state = OFF;
-	lsm6dsv16x_start_significant_motion_detection();
-
+    /*  FSM configuration clears the EMB_FUNC_EN_A register (04h of the embedded function registers),
+     *  so FSM needs to be configured before Significant Motion detection.
+     */
     uint8_t fsm_algs_to_start[1] = {0};
 	lsm6dsv16x_start_fsm(fsm_algs_to_start, 1);
+
+	lsm6dsv16x_start_significant_motion_detection();
 }
 
 static void off_run(void *o)
