@@ -58,6 +58,8 @@ static void off_entry(void *o)
 	lsm6dsv16x_start_fsm(fsm_algs_to_start, 1);
 
 	lsm6dsv16x_start_significant_motion_detection();
+
+    lsm6dsv16x_int2_to_int1(true);
 }
 
 static void off_run(void *o)
@@ -74,6 +76,7 @@ static void off_run(void *o)
 
 static void off_exit(void *o)
 {
+    // Stopping significant motion detection completely resets the IMU, no need to stop FSM as well, or remove int2_on_int1.
 	lsm6dsv16x_stop_significant_motion_detection();
 }
 

@@ -231,6 +231,7 @@ int lsm6dsv16x_stop_acquisition()
 		.sigmot_enabled = false,
 		.fsm_enabled = false,
 		.calib = LSM6DSV16X_CALIBRATION_NOT_CALIBRATING,
+		.int2_on_int1 = false,
 	};
 	memcpy(&sensor.state, &tmp_state, sizeof(tmp_state));
 
@@ -300,6 +301,8 @@ int lsm6dsv16x_int2_to_int1(bool b){
 		LOG_ERR("Write CTRL4 failed (%i)", ret);
 		return ret;
 	}
+
+	sensor.state.int2_on_int1 = b ? true : false;
 
 	return 0;
 }
@@ -380,7 +383,6 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 
 		/* Read output only if new xl value is available */
 		lsm6dsv16x_embedded_status_get(&sensor.dev_ctx, &status);
-		LOG_DBG("yoohoo %u", status.sig_mot);
 
 		if (status.sig_mot)
 		{
@@ -598,6 +600,11 @@ void lsm6dsv16x_int1_irq(struct k_work *item) {
 				LOG_ERR("No Calibration callback defined!");
 			}
 		}
+	}
+
+	if (sensor.state.int2_on_int1)
+	{
+		lsm6dsv16x_int2_irq(item);
 	}
 }
 
@@ -858,6 +865,7 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 		.sigmot_enabled = false,
 		.fsm_enabled = false,
 		.calib = LSM6DSV16X_CALIBRATION_NOT_CALIBRATING,
+		.int2_on_int1 = false,
 	};
 	memcpy(&sensor.state, &tmp_state, sizeof(tmp_state));
 }

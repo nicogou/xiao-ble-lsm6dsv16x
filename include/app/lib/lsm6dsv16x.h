@@ -40,6 +40,7 @@ typedef struct {
 	bool sigmot_enabled;
 	bool fsm_enabled;
 	lsm6dsv16x_calib_state_t calib;
+	bool int2_on_int1;
 } lsm6dsv16x_state_t;
 
 typedef struct {
