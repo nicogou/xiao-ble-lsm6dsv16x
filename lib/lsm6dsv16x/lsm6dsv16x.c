@@ -211,7 +211,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 	return 0;
 }
 
-int lsm6dsv16x_stop_acquisition()
+int lsm6dsv16x_reset()
 {
 	lsm6dsv16x_reset_t rst;
 	/* Restore default configuration */
@@ -252,11 +252,6 @@ int lsm6dsv16x_start_calibration()
 	return 0;
 }
 
-int lsm6dsv16x_stop_calibration() {
-	// lsm6dsv16x_stop_acquisition switches the sensor state back to LSM6DSV16X_IDLE, no need to do it here.
-	return lsm6dsv16x_stop_acquisition();
-}
-
 int lsm6dsv16x_start_significant_motion_detection()
 {
 	lsm6dsv16x_emb_pin_int_route_t pin_int = { 0 };
@@ -278,11 +273,6 @@ int lsm6dsv16x_start_significant_motion_detection()
 
 	sensor.state.sigmot_enabled = true;
 	return 0;
-}
-
-int lsm6dsv16x_stop_significant_motion_detection()
-{
-	return lsm6dsv16x_stop_acquisition();
 }
 
 int lsm6dsv16x_int2_to_int1(bool b){
@@ -346,11 +336,6 @@ int lsm6dsv16x_start_fsm(uint8_t* fsm_alg_nb, uint8_t n)
 
 	sensor.state.fsm_enabled = true;
 	return 0;
-}
-
-int lsm6dsv16x_stop_fsm()
-{
-	return lsm6dsv16x_stop_acquisition();
 }
 
 void lsm6dsv16x_set_gbias(float x, float y, float z)
@@ -548,8 +533,8 @@ static bool _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data, float_t
 	return handled;
 }
 
-void lsm6dsv16x_int1_irq(struct k_work *item) {
-
+void lsm6dsv16x_int1_irq(struct k_work *item)
+{
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
 	float_t gbias_tmp[3];
@@ -592,7 +577,7 @@ void lsm6dsv16x_int1_irq(struct k_work *item) {
 		if (sensor.state.calib == LSM6DSV16X_CALIBRATION_RECORDING && calibration_result)
 		{
 			k_timer_stop(&calibration_timer);
-			lsm6dsv16x_stop_calibration();
+			lsm6dsv16x_reset();
 			if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
 			{
 				(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(calibration_result, gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);

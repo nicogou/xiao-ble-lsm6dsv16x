@@ -81,12 +81,9 @@ typedef struct {
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg);
 void lsm6dsv16x_int1_irq(struct k_work *item);
 int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enable_qvar);
-int lsm6dsv16x_stop_acquisition();
+int lsm6dsv16x_reset();
 int lsm6dsv16x_start_calibration();
-int lsm6dsv16x_stop_calibration();
 int lsm6dsv16x_start_significant_motion_detection();
-int lsm6dsv16x_stop_significant_motion_detection();
 int lsm6dsv16x_start_fsm(uint8_t* fsm_alg_nb, uint8_t n);
-int lsm6dsv16x_stop_fsm();
 void lsm6dsv16x_set_gbias(float x, float y, float z);
 int lsm6dsv16x_int2_to_int1(bool b);

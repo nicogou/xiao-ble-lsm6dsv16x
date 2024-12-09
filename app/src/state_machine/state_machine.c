@@ -76,8 +76,7 @@ static void off_run(void *o)
 
 static void off_exit(void *o)
 {
-    // Stopping significant motion detection completely resets the IMU, no need to stop FSM as well, or remove int2_on_int1.
-	lsm6dsv16x_stop_significant_motion_detection();
+	lsm6dsv16x_reset();
 }
 
 /* State IDLE */
@@ -185,7 +184,7 @@ static void recording_exit(void *o)
 	{
 		emulator_session_stop();
 	} else {
-		lsm6dsv16x_stop_acquisition();
+		lsm6dsv16x_reset();
 		int res = usb_mass_storage_end_current_session();
 		if (res) {
 			LOG_ERR("Unable to end session (%i)", res);
@@ -218,7 +217,7 @@ static void calibrating_run(void *o)
 
 static void calibrating_exit(void *o)
 {
-	lsm6dsv16x_stop_calibration();
+	lsm6dsv16x_reset();
 }
 
 xiao_state_t state_machine_current_state(void) {
