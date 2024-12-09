@@ -51,10 +51,15 @@ static void off_entry(void *o)
 	smp_bluetooth_stop_advertising();
 
     current_state = OFF;
-	lsm6dsv16x_start_significant_motion_detection();
-
+    /*  FSM configuration clears the EMB_FUNC_EN_A register (04h of the embedded function registers),
+     *  so FSM needs to be configured before Significant Motion detection.
+     */
     uint8_t fsm_algs_to_start[1] = {0};
 	lsm6dsv16x_start_fsm(fsm_algs_to_start, 1);
+
+	lsm6dsv16x_start_significant_motion_detection();
+
+    lsm6dsv16x_int2_to_int1(true);
 }
 
 static void off_run(void *o)
@@ -71,7 +76,7 @@ static void off_run(void *o)
 
 static void off_exit(void *o)
 {
-	lsm6dsv16x_stop_significant_motion_detection();
+	lsm6dsv16x_reset();
 }
 
 /* State IDLE */
@@ -179,7 +184,7 @@ static void recording_exit(void *o)
 	{
 		emulator_session_stop();
 	} else {
-		lsm6dsv16x_stop_acquisition();
+		lsm6dsv16x_reset();
 		int res = usb_mass_storage_end_current_session();
 		if (res) {
 			LOG_ERR("Unable to end session (%i)", res);
@@ -212,7 +217,7 @@ static void calibrating_run(void *o)
 
 static void calibrating_exit(void *o)
 {
-	lsm6dsv16x_stop_calibration();
+	lsm6dsv16x_reset();
 }
 
 xiao_state_t state_machine_current_state(void) {
