@@ -348,8 +348,12 @@ void lsm6dsv16x_set_gbias(float x, float y, float z)
 
 void lsm6dsv16x_int2_irq(struct k_work *item)
 {
+	bool handled = false;
+
 	if (sensor.state.qvar_enabled)
 	{
+		handled = true;
+
 		lsm6dsv16x_all_sources_t all_sources;
 		int16_t data;
 
@@ -364,6 +368,8 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 
 	if (sensor.state.sigmot_enabled)
 	{
+		handled = true;
+
 		lsm6dsv16x_embedded_status_t status;
 
 		/* Read output only if new xl value is available */
@@ -379,6 +385,8 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 
 	if (sensor.state.fsm_enabled)
 	{
+		handled = true;
+
 		lsm6dsv16x_all_sources_t status;
 		lsm6dsv16x_fsm_out_t fsm_out;
 
@@ -436,6 +444,11 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[7])(fsm_out.fsm_outs8);
 			}
 		}
+	}
+
+	if (!handled)
+	{
+		LOG_WRN("IMU interrupt 2 fired, but not handled!");
 	}
 }
 
@@ -535,6 +548,7 @@ static bool _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data, float_t
 
 void lsm6dsv16x_int1_irq(struct k_work *item)
 {
+	bool handled = false;
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
 	float_t gbias_tmp[3];
@@ -542,6 +556,7 @@ void lsm6dsv16x_int1_irq(struct k_work *item)
 
 	if (sensor.state.xl_enabled || sensor.state.gy_enabled)
 	{
+		handled = true;
 		/* Read watermark flag */
 		lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
 		num = fifo_status.fifo_level;
@@ -589,7 +604,13 @@ void lsm6dsv16x_int1_irq(struct k_work *item)
 
 	if (sensor.state.int2_on_int1)
 	{
+		handled = true;
 		lsm6dsv16x_int2_irq(item);
+	}
+
+	if (!handled)
+	{
+		LOG_WRN("IMU interrupt 1 fired, but not handled!");
 	}
 }
 
