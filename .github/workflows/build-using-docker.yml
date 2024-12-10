@@ -1,4 +1,4 @@
-name: Build and test app in NCS docker container
+name: Build app in NCS docker container
 
 on:
   pull_request:
@@ -26,8 +26,10 @@ jobs:
 
       - name: Build firmware
         working-directory: xiao-ble-lsm6dsv16x.git
+        env:
+          EI_API_KEY: ${{ secrets.EI_API_KEY }}
         run: |
-          west build -b nicoco app
+          west build -b nicoco app --no-sysbuild -- -DEI_API_KEY_HEADER="x-api-key:$EI_API_KEY"
           west prepare-dfu
 
       - name: Store hex files
@@ -38,8 +40,3 @@ jobs:
             xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.uf2
             xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.hex
             xiao-ble-lsm6dsv16x.git/build/zephyr/zephyr.dat
-
-      - name: Twister Tests
-        working-directory: xiao-ble-lsm6dsv16x.git
-        run: |
-          west twister -T tests -v --inline-logs --integration

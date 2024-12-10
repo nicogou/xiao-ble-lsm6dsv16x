@@ -32,6 +32,7 @@ void imu_int_1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
     return;
 }
 
+#if DT_NODE_EXISTS(imu_int2)
 static struct k_work imu_int2_work;
 
 // Interrupt 2 init
@@ -45,17 +46,18 @@ void imu_int_2_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
 	k_work_submit(&imu_int2_work);
     return;
 }
+#endif
 
 static void _calibration_timer_cb(struct k_timer *dummy);
 K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
 
 void calibration_timer_work_cb(struct k_work *work)
 {
-	switch (sensor.state)
+	switch (sensor.state.calib)
 	{
 	case LSM6DSV16X_CALIBRATION_SETTLING:
 		// Start recording. Launch timer to see if calibration times out.
-		sensor.state = LSM6DSV16X_CALIBRATION_RECORDING;
+		sensor.state.calib = LSM6DSV16X_CALIBRATION_RECORDING;
 		k_timer_start(&calibration_timer, K_SECONDS(CONFIG_LSM6DSV16X_CALIBRATION_TIMEOUT), K_NO_WAIT);
 		break;
 
@@ -195,7 +197,8 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 		}
 	}
 
-	sensor.state = LSM6DSV16X_RECORDING;
+	sensor.state.xl_enabled = true;
+	sensor.state.gy_enabled = true;
 	/* Mask accelerometer and gyroscope data until the settling of the sensors filter is completed */
   	filt_settling_mask.drdy = PROPERTY_ENABLE;
   	filt_settling_mask.irq_xl = PROPERTY_ENABLE;
@@ -220,6 +223,8 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 		if (ret) {
 			LOG_ERR("lsm6dsv16x_pin_int2_route_set (%i)", ret);
 		}
+
+		sensor.state.qvar_enabled = true;
 	}
 
 	sensor.nb_samples_to_discard = CONFIG_LSM6DSV16X_SAMPLES_TO_DISCARD;
@@ -227,7 +232,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 	return 0;
 }
 
-int lsm6dsv16x_stop_acquisition()
+int lsm6dsv16x_reset()
 {
 	lsm6dsv16x_reset_t rst;
 	/* Restore default configuration */
@@ -236,7 +241,21 @@ int lsm6dsv16x_stop_acquisition()
 		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
 	} while (rst != LSM6DSV16X_READY);
 
-	sensor.state = LSM6DSV16X_IDLE;
+	lsm6dsv16x_state_t tmp_state = {
+		.xl_enabled = false,
+		.gy_enabled = false,
+		.sflp_state = {
+			.gbias_enabled = false,
+			.game_rot_enabled = false,
+			.gravity_enabled = false,
+		},
+		.sigmot_enabled = false,
+		.fsm_enabled = false,
+		.calib = LSM6DSV16X_CALIBRATION_NOT_CALIBRATING,
+		.int2_on_int1 = false,
+	};
+	memcpy(&sensor.state, &tmp_state, sizeof(tmp_state));
+
 	return 0;
 }
 
@@ -249,19 +268,14 @@ int lsm6dsv16x_start_calibration()
 		return res;
 	}
 
-	sensor.state = LSM6DSV16X_CALIBRATION_SETTLING;
+	sensor.state.calib = LSM6DSV16X_CALIBRATION_SETTLING;
 	k_timer_start(&calibration_timer, K_SECONDS(CONFIG_LSM6DSV16X_CALIBRATION_SETTLING_TIME), K_NO_WAIT);
 	return 0;
 }
 
-int lsm6dsv16x_stop_calibration() {
-	// lsm6dsv16x_stop_acquisition switches the sensor state back to LSM6DSV16X_IDLE, no need to do it here.
-	return lsm6dsv16x_stop_acquisition();
-}
-
 int lsm6dsv16x_start_significant_motion_detection()
 {
-		lsm6dsv16x_emb_pin_int_route_t pin_int = { 0 };
+	lsm6dsv16x_emb_pin_int_route_t pin_int = { 0 };
 
 	/* Enable Block Data Update */
 	lsm6dsv16x_block_data_update_set(&sensor.dev_ctx, PROPERTY_ENABLE);
@@ -276,22 +290,31 @@ int lsm6dsv16x_start_significant_motion_detection()
 	/* Set Output Data Rate.*/
 	lsm6dsv16x_xl_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_ODR_AT_120Hz);
 	/* Set full scale */
-	lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, sensor.scale.xl_scale);
+	lsm6dsv16x_xl_full_scale_set(&sensor.dev_ctx, LSM6DSV16X_2g/*sensor.scale.xl_scale*/);
 
-	sensor.state = LSM6DSV16X_SIGNIFICANT_MOTION;
+	sensor.state.sigmot_enabled = true;
 	return 0;
 }
 
-int lsm6dsv16x_stop_significant_motion_detection()
-{
-	lsm6dsv16x_reset_t rst;
-	/* Restore default configuration */
-  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
-	do {
-		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
-	} while (rst != LSM6DSV16X_READY);
+int lsm6dsv16x_int2_to_int1(bool b){
+	int ret;
+	lsm6dsv16x_ctrl4_t ctrl4;
+	ret = lsm6dsv16x_read_reg(&sensor.dev_ctx, LSM6DSV16X_CTRL4, (uint8_t *)&ctrl4, 1);
+	if (ret) {
+		LOG_ERR("Read CTRL4 failed (%i)", ret);
+		return ret;
+	}
 
-	sensor.state = LSM6DSV16X_IDLE;
+	ctrl4.int2_on_int1 = b ? 1 : 0;
+
+	ret = lsm6dsv16x_write_reg(&sensor.dev_ctx, LSM6DSV16X_CTRL4, (uint8_t *)&ctrl4, 1);
+	if (ret) {
+		LOG_ERR("Write CTRL4 failed (%i)", ret);
+		return ret;
+	}
+
+	sensor.state.int2_on_int1 = b ? true : false;
+
 	return 0;
 }
 
@@ -332,20 +355,7 @@ int lsm6dsv16x_start_fsm(uint8_t* fsm_alg_nb, uint8_t n)
 		}
 	}
 
-	sensor.state = LSM6DSV16X_FSM;
-	return 0;
-}
-
-int lsm6dsv16x_stop_fsm()
-{
-	lsm6dsv16x_reset_t rst;
-	/* Restore default configuration */
-  	lsm6dsv16x_reset_set(&sensor.dev_ctx, LSM6DSV16X_GLOBAL_RST);
-	do {
-		lsm6dsv16x_reset_get(&sensor.dev_ctx, &rst);
-	} while (rst != LSM6DSV16X_READY);
-
-	sensor.state = LSM6DSV16X_IDLE;
+	sensor.state.fsm_enabled = true;
 	return 0;
 }
 
@@ -359,8 +369,12 @@ void lsm6dsv16x_set_gbias(float x, float y, float z)
 
 void lsm6dsv16x_int2_irq(struct k_work *item)
 {
-	if (sensor.state == LSM6DSV16X_RECORDING)
+	bool handled = false;
+
+	if (sensor.state.qvar_enabled)
 	{
+		handled = true;
+
 		lsm6dsv16x_all_sources_t all_sources;
 		int16_t data;
 
@@ -373,12 +387,15 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 		}
 	}
 
-	if (sensor.state == LSM6DSV16X_SIGNIFICANT_MOTION)
+	if (sensor.state.sigmot_enabled)
 	{
+		handled = true;
+
 		lsm6dsv16x_embedded_status_t status;
 
 		/* Read output only if new xl value is available */
 		lsm6dsv16x_embedded_status_get(&sensor.dev_ctx, &status);
+
 		if (status.sig_mot)
 		{
 			if (sensor.callbacks.lsm6dsv16x_sigmot_cb) {
@@ -387,8 +404,10 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 		}
 	}
 
-	if (sensor.state == LSM6DSV16X_FSM)
+	if (sensor.state.fsm_enabled)
 	{
+		handled = true;
+
 		lsm6dsv16x_all_sources_t status;
 		lsm6dsv16x_fsm_out_t fsm_out;
 
@@ -446,6 +465,11 @@ void lsm6dsv16x_int2_irq(struct k_work *item)
 				(*sensor.callbacks.lsm6dsv16x_fsm_cbs[7])(fsm_out.fsm_outs8);
 			}
 		}
+	}
+
+	if (!handled)
+	{
+		LOG_WRN("IMU interrupt 2 fired, but not handled!");
 	}
 }
 
@@ -543,55 +567,71 @@ static bool _data_handler_calibrating(lsm6dsv16x_fifo_out_raw_t* f_data, float_t
 	return handled;
 }
 
-void lsm6dsv16x_int1_irq(struct k_work *item) {
-
+void lsm6dsv16x_int1_irq(struct k_work *item)
+{
+	bool handled = false;
 	uint16_t num = 0;
     lsm6dsv16x_fifo_status_t fifo_status;
 	float_t gbias_tmp[3];
 	bool calibration_result = false;
 
-	/* Read watermark flag */
-	lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
-	num = fifo_status.fifo_level;
+	if (sensor.state.xl_enabled || sensor.state.gy_enabled)
+	{
+		handled = true;
+		/* Read watermark flag */
+		lsm6dsv16x_fifo_status_get(&sensor.dev_ctx, &fifo_status);
+		num = fifo_status.fifo_level;
 
-	if (sensor.state != LSM6DSV16X_CALIBRATION_SETTLING) {
-		LOG_DBG("Received %d samples from FIFO.", num);
-	}
-
-	while (num--) {
-        lsm6dsv16x_fifo_out_raw_t f_data;
-
-        /* Read FIFO sensor value */
-        lsm6dsv16x_fifo_out_raw_get(&sensor.dev_ctx, &f_data);
-
-		if (sensor.nb_samples_to_discard) {
-			sensor.nb_samples_to_discard--;
-			continue;
+		if (sensor.state.calib != LSM6DSV16X_CALIBRATION_SETTLING) {
+			LOG_DBG("Received %d samples from FIFO.", num);
 		}
 
-		if (sensor.state == LSM6DSV16X_RECORDING)
-		{
-			_data_handler_recording(&f_data);
-		} else if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING)
-		{
-			calibration_result = _data_handler_calibrating(&f_data, gbias_tmp);
-			if (calibration_result)
+		while (num--) {
+			lsm6dsv16x_fifo_out_raw_t f_data;
+
+			/* Read FIFO sensor value */
+			lsm6dsv16x_fifo_out_raw_get(&sensor.dev_ctx, &f_data);
+
+			if (sensor.nb_samples_to_discard) {
+				sensor.nb_samples_to_discard--;
+				continue;
+			}
+
+			if (sensor.state.calib == LSM6DSV16X_CALIBRATION_NOT_CALIBRATING)
 			{
-				break;
+				_data_handler_recording(&f_data);
+			} else if (sensor.state.calib == LSM6DSV16X_CALIBRATION_RECORDING)
+			{
+				calibration_result = _data_handler_calibrating(&f_data, gbias_tmp);
+				if (calibration_result)
+				{
+					break;
+				}
+			}
+		}
+
+		if (sensor.state.calib == LSM6DSV16X_CALIBRATION_RECORDING && calibration_result)
+		{
+			k_timer_stop(&calibration_timer);
+			lsm6dsv16x_reset();
+			if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
+			{
+				(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(calibration_result, gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
+			} else {
+				LOG_ERR("No Calibration callback defined!");
 			}
 		}
 	}
 
-	if (sensor.state == LSM6DSV16X_CALIBRATION_RECORDING && calibration_result)
+	if (sensor.state.int2_on_int1)
 	{
-		k_timer_stop(&calibration_timer);
-		lsm6dsv16x_stop_calibration();
-		if (sensor.callbacks.lsm6dsv16x_calibration_result_cb)
-		{
-			(*sensor.callbacks.lsm6dsv16x_calibration_result_cb)(calibration_result, gbias_tmp[0], gbias_tmp[1], gbias_tmp[2]);
-		} else {
-			LOG_ERR("No Calibration callback defined!");
-		}
+		handled = true;
+		lsm6dsv16x_int2_irq(item);
+	}
+
+	if (!handled)
+	{
+		LOG_WRN("IMU interrupt 1 fired, but not handled!");
 	}
 }
 
@@ -805,13 +845,16 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 		LOG_ERR("Error while attaching interrupt 1 %i", res);
 	}
 
+	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
+
+#if DT_NODE_EXISTS(imu_int2)
 	res = attach_interrupt(imu_int_2, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_2_cb_data, imu_int_2_cb);
 	if (res != 0) {
 		LOG_ERR("Error while attaching interrupt 2 %i", res);
 	}
 
-	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
 	k_work_init(&imu_int2_work, lsm6dsv16x_int2_irq);
+#endif
 
 	lsm6dsv16x_reset_t rst;
 
@@ -841,5 +884,18 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 
 	lsm6dsv16x_scale_init(LSM6DSV16X_4g, LSM6DSV16X_2000dps);
 
-	sensor.state = LSM6DSV16X_IDLE;
+	lsm6dsv16x_state_t tmp_state = {
+		.xl_enabled = false,
+		.gy_enabled = false,
+		.sflp_state = {
+			.gbias_enabled = false,
+			.game_rot_enabled = false,
+			.gravity_enabled = false,
+		},
+		.sigmot_enabled = false,
+		.fsm_enabled = false,
+		.calib = LSM6DSV16X_CALIBRATION_NOT_CALIBRATING,
+		.int2_on_int1 = false,
+	};
+	memcpy(&sensor.state, &tmp_state, sizeof(tmp_state));
 }

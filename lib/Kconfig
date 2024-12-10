@@ -6,6 +6,7 @@ menu "Custom libraries"
 rsource "custom/Kconfig"
 rsource "xiao_ble_shell/Kconfig"
 rsource "lsm6dsv16x/Kconfig"
+rsource "lsm6dsv16bx/Kconfig"
 rsource "smp_bluetooth/Kconfig"
 rsource "fit_sdk/Kconfig"
 

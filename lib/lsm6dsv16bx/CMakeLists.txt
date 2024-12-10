@@ -1,0 +1,8 @@
+# Include the st submodule
+zephyr_include_directories(lsm6dsv16bx-pid)
+
+zephyr_library()
+zephyr_library_sources(lsm6dsv16bx-pid/lsm6dsv16bx_reg.c)
+zephyr_library_sources(lsm6dsv16bx.c lsm6dsv16bx_sflp_utils.c)
+zephyr_library_sources_ifdef(CONFIG_LSM6DSV16BX_I2C platform_interface/platform_interface_i2c.c)
+zephyr_library_sources_ifdef(CONFIG_LSM6DSV16BX_SPI platform_interface/platform_interface_spi.c)

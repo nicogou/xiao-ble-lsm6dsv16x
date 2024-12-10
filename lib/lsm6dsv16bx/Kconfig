@@ -1,0 +1,71 @@
+config LSM6DSV16BX
+	bool "Support for LSM6DSV16BX sensor library"
+	select LSM6DSV16BX_I2C if $(dt_compat_on_bus,$(DT_COMPAT_ZEPHYR_LSM6DSV16BX),i2c)
+	select LSM6DSV16BX_SPI if $(dt_compat_on_bus,$(DT_COMPAT_ZEPHYR_LSM6DSV16BX),spi)
+	help
+	  This option enables the LSM6DSV16BX library.
+
+config LSM6DSV16BX_SPI
+	bool
+	select SPI
+	help
+	  This options enables the SPI communication with LSM6DSV16BX sensor.
+
+config LSM6DSV16BX_I2C
+	bool
+	select I2C
+	help
+	  This options enables the I2C communication with LSM6DSV16BX sensor.
+
+config LSM6DSV16BX_CALIBRATION_SETTLING_TIME
+	int "Calibration settling time in seconds"
+	default 5
+	help
+	  In order to measure gyroscope bias, it is best to let the sensor rest to let the values settle on startup.
+	  This option configures the time in seconds between the start of the sensor, and the first gyroscope bias measurement.
+
+config LSM6DSV16BX_CALIBRATION_TIMEOUT
+	int "Calibration timeout in seconds"
+	default 30
+	help
+	  This option configures the time in seconds after which the calibration is considered failed if we haven't received any data.
+
+if LSM6DSV16BX
+
+config GPIO
+	default y
+
+config LSM6DSV16BX_SAMPLES_TO_DISCARD
+	int "Nb of samples to discard at the start of a session"
+	default 5
+
+# Define 8 possible FSM algorithms using the template.
+alg-number = 1
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 2
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 3
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 4
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 5
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 6
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 7
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 8
+rsource "Kconfig.template.fsm_alg"
+
+endif # LSM6DSV16BX
+
+module = LSM6DSV16BX
+module-str = LSM6DSV16BX
+source "subsys/logging/Kconfig.template.log_config"

@@ -12,8 +12,10 @@
 
 #define SESSION_FILE_NAME		"SESSION"
 #define SESSION_FILE_EXTENSION	".CSV"
-#define SESSION_FILE_HEADER_SIMPLE		"ts,ax,ay,az,gx,gy,gz\n"
-#define SESSION_FILE_HEADER_SFLP		"ts,ax,ay,az,gx,gy,gz,grotx,groty,grotz,grotw,gravx,gravy,gravz\n"
+#define SESSION_FILE_HEADER_SIMPLE		"ts,ax,ay,az,gx,gy,gz"
+#define SESSION_FILE_HEADER_SFLP		",grotx,groty,grotz,grotw,gravx,gravy,gravz"
+#define SESSION_FILE_HEADER_QVAR		",qvar"
+#define SESSION_FILE_HEADER_NEWLINE		"\n"
 #define SESSION_FILE_NB_COLUMN_SIMPLE	7
 #define SESSION_FILE_NB_COLUMN_SFLP		14
 

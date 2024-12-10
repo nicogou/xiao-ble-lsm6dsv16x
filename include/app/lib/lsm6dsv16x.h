@@ -20,14 +20,27 @@ typedef struct {
 #define BOOT_TIME 10 //ms
 #define FIFO_WATERMARK 200
 
+typedef struct {
+	bool gbias_enabled;
+	bool game_rot_enabled;
+	bool gravity_enabled;
+} lsm6dsv16x_sflp_state_t;
+
 typedef enum {
-	LSM6DSV16X_OFF,
-	LSM6DSV16X_IDLE,
-	LSM6DSV16X_RECORDING,
+	LSM6DSV16X_CALIBRATION_NOT_CALIBRATING,
 	LSM6DSV16X_CALIBRATION_SETTLING,
 	LSM6DSV16X_CALIBRATION_RECORDING,
-	LSM6DSV16X_SIGNIFICANT_MOTION,
-	LSM6DSV16X_FSM,
+} lsm6dsv16x_calib_state_t;
+
+typedef struct {
+	bool xl_enabled;
+	bool gy_enabled;
+	bool qvar_enabled;
+	lsm6dsv16x_sflp_state_t sflp_state;
+	bool sigmot_enabled;
+	bool fsm_enabled;
+	lsm6dsv16x_calib_state_t calib;
+	bool int2_on_int1;
 } lsm6dsv16x_state_t;
 
 typedef struct {
@@ -68,11 +81,9 @@ typedef struct {
 void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg);
 void lsm6dsv16x_int1_irq(struct k_work *item);
 int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enable_qvar);
-int lsm6dsv16x_stop_acquisition();
+int lsm6dsv16x_reset();
 int lsm6dsv16x_start_calibration();
-int lsm6dsv16x_stop_calibration();
 int lsm6dsv16x_start_significant_motion_detection();
-int lsm6dsv16x_stop_significant_motion_detection();
 int lsm6dsv16x_start_fsm(uint8_t* fsm_alg_nb, uint8_t n);
-int lsm6dsv16x_stop_fsm();
 void lsm6dsv16x_set_gbias(float x, float y, float z);
+int lsm6dsv16x_int2_to_int1(bool b);

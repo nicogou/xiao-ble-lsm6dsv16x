@@ -8,7 +8,7 @@ manifest:
   remotes:
     - name: ncs
       url-base: https://github.com/nrfconnect
-    - name: st-lsm6dsv16x
+    - name: st-remote
       url-base: https://github.com/STMicroelectronics
     - name: personal-repo
       url-base: https://github.com/nicogou/
@@ -17,12 +17,16 @@ manifest:
     - name: nrf
       remote: ncs
       repo-path: sdk-nrf
-      revision: v2.7.0
+      revision: main
       import: true
     - name: lsm6dsv16x-pid
-      remote: st-lsm6dsv16x
+      remote: st-remote
       revision: main
       path: xiao-ble-lsm6dsv16x.git/lib/lsm6dsv16x/lsm6dsv16x-pid
+    - name: lsm6dsv16bx-pid
+      remote: st-remote
+      revision: main
+      path: xiao-ble-lsm6dsv16x.git/lib/lsm6dsv16bx/lsm6dsv16bx-pid
     - name: FIT-SDK
       remote: personal-repo
       revision: main

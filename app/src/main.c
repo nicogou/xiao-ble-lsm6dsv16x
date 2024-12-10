@@ -14,14 +14,16 @@
 
 #include <app_version.h>
 
-#include <app/lib/lsm6dsv16x.h>
-#include <app/lib/lsm6dsv16x_fsm_config.h> // Include FSM configuration files
+#include <app/lib/lsm6dsv16bx.h>
+#include <app/lib/lsm6dsv16bx_fsm_config.h> // Include FSM configuration files
 #include <app/lib/xiao_smp_bluetooth.h>
 #include <app/lib/xiao_ble_shell.h>
 
+#if defined(CONFIG_EDGE_IMPULSE)
 #include <edge-impulse/impulse.h>
-#include <ui/ui.h>
+#endif
 
+#include <ui/ui.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -60,6 +62,8 @@ struct line {
 	bool gyro_updated;
 	float_t ts;
 	bool ts_updated;
+	float_t qvar;
+	bool qvar_updated;
 	float_t gbias_x;
 	float_t gbias_y;
 	float_t gbias_z;
@@ -79,6 +83,7 @@ static struct line l = {
 	.acc_updated = false,
 	.gyro_updated = false,
 	.ts_updated = false,
+	.qvar_updated = false,
 	.gbias_updated = false,
 	.gravity_updated = false,
 	.game_rot_updated = false,
@@ -88,21 +93,24 @@ static struct line l = {
 
 static void print_line_if_needed(){
 	char txt[TXT_SIZE];
+	char tmp_txt[TXT_SIZE];
 	char data_forwarded[TXT_SIZE];
 	float_t ei_input_data[3];
 
-	bool b;
+	bool b = l.acc_updated && l.gyro_updated && l.ts_updated;
 	xiao_recording_state_t recording_state = state_machine_get_recording_state();
 	if (recording_state.sflp_enabled) {
-		b = l.acc_updated && l.gyro_updated && l.ts_updated && l.game_rot_updated && l.gravity_updated;
-	} else {
-		b = l.acc_updated && l.gyro_updated && l.ts_updated;
+		b = b && l.game_rot_updated && l.gravity_updated;
+	}
+	if (recording_state.qvar_enabled) {
+		b = b && l.qvar_updated;
 	}
 
 	if (b) {
 		l.acc_updated = false;
 		l.gyro_updated = false;
 		l.ts_updated = false;
+		l.qvar_updated = false;
 		l.game_rot_updated = false;
 		l.gravity_updated = false;
 		ei_input_data[0] = l.acc_x;
@@ -112,12 +120,32 @@ static void print_line_if_needed(){
 		int res;
 		if (!recording_state.emulation_enabled) // Only save to flash memory if emulation is not enabled.
 		{
-			if (recording_state.sflp_enabled) {
-				res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
-			} else {
-				res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+			res = snprintf(txt, TXT_SIZE, "%.3f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", (double)l.ts, (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
+			if (res < 0 || res >= TXT_SIZE) {
+				LOG_ERR("Encoding error happened (%i)", res);
 			}
-			if (res < 0 && res >= TXT_SIZE) {
+
+			if (recording_state.sflp_enabled) {
+				memset(tmp_txt, 0, TXT_SIZE);
+				memcpy(tmp_txt, txt, strlen(txt));
+				res = snprintf(txt, TXT_SIZE, "%s,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", tmp_txt, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+				if (res < 0 || res >= TXT_SIZE) {
+					LOG_ERR("Encoding error happened (%i)", res);
+				}
+			}
+			if (recording_state.qvar_enabled) {
+				memset(tmp_txt, 0, TXT_SIZE);
+				memcpy(tmp_txt, txt, strlen(txt));
+				res = snprintf(txt, TXT_SIZE, "%s,%.0f", tmp_txt, (double)l.qvar);
+				if (res < 0 || res >= TXT_SIZE) {
+					LOG_ERR("Encoding error happened (%i)", res);
+				}
+			}
+			memset(tmp_txt, 0, TXT_SIZE);
+			memcpy(tmp_txt, txt, strlen(txt));
+			res = snprintf(txt, TXT_SIZE, "%s\n", tmp_txt);
+
+			if (res < 0 || res >= TXT_SIZE) {
 				LOG_ERR("Encoding error happened (%i)", res);
 			} else {
 				res = usb_mass_storage_write_to_current_session(txt, strlen(txt));
@@ -130,16 +158,35 @@ static void print_line_if_needed(){
 
 		if (recording_state.data_forwarder_enabled)
 		{
-			if (recording_state.sflp_enabled)
-			{
-				res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
-			} else {
-				res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
-			}
-
+			res = snprintf(data_forwarded, TXT_SIZE, "%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", (double)l.acc_x, (double)l.acc_y, (double)l.acc_z, (double)l.gyro_x, (double)l.gyro_y, (double)l.gyro_z);
 			if (res < 0 || res >= TXT_SIZE) {
 				LOG_ERR("Encoding error happened for data forwarder (%i)", res);
 			}
+			if (recording_state.sflp_enabled)
+			{
+				memset(tmp_txt, 0, TXT_SIZE);
+				memcpy(tmp_txt, data_forwarded, strlen(data_forwarded));
+				res = snprintf(data_forwarded, TXT_SIZE, "%s,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", tmp_txt, (double)l.game_rot_x, (double)l.game_rot_y, (double)l.game_rot_z, (double)l.game_rot_w, (double)l.gravity_x, (double)l.gravity_y, (double)l.gravity_z);
+				if (res < 0 || res >= TXT_SIZE) {
+					LOG_ERR("Encoding error happened for data forwarder (sflp) (%i)", res);
+				}
+			}
+			if (recording_state.qvar_enabled)
+			{
+				memset(tmp_txt, 0, TXT_SIZE);
+				memcpy(tmp_txt, data_forwarded, strlen(data_forwarded));
+				res = snprintf(data_forwarded, TXT_SIZE, "%s,%.0f", tmp_txt, (double)l.qvar);
+				if (res < 0 || res >= TXT_SIZE) {
+					LOG_ERR("Encoding error happened for data forwarder (qvar) (%i)", res);
+				}
+			}
+			memset(tmp_txt, 0, TXT_SIZE);
+			memcpy(tmp_txt, data_forwarded, strlen(data_forwarded));
+			res = snprintf(data_forwarded, TXT_SIZE, "%s\n", tmp_txt);
+			if (res < 0 || res >= TXT_SIZE) {
+				LOG_ERR("Encoding error happened for data forwarder (newline) (%i)", res);
+			}
+
 			printk("%s", data_forwarded);
 		}
 
@@ -169,6 +216,15 @@ static void gyro_received_cb(float_t x, float_t y, float_t z)
 	l.gyro_y = y;
 	l.gyro_z = z;
 	l.gyro_updated = true;
+
+	print_line_if_needed();
+	return;
+}
+
+static void qvar_received_cb(float_t qvar_data)
+{
+	l.qvar = qvar_data;
+	l.qvar_updated = true;
 
 	print_line_if_needed();
 	return;
@@ -241,7 +297,7 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 			}
 		}
 
-		lsm6dsv16x_set_gbias(x, y, z);
+		lsm6dsv16bx_set_gbias(x, y, z);
 
 	} else {
 		LOG_ERR("Calibration timeout!");
@@ -258,13 +314,13 @@ static void sig_mot_cb()
 
 static int fsm_long_touch_pre_cfg(stmdev_ctx_t ctx)
 {
-	lsm6dsv16x_ah_qvar_mode_t qvar_mode;
+	lsm6dsv16bx_ah_qvar_mode_t qvar_mode;
 
 	/* Enable QVar now because it is not enabled by Unico configuration */
-	qvar_mode.ah_qvar_en = 1;
-	int ret = lsm6dsv16x_ah_qvar_mode_set(&ctx, qvar_mode);
+	qvar_mode.ah_qvar1_en = 1;
+	int ret = lsm6dsv16bx_ah_qvar_mode_set(&ctx, qvar_mode);
 	if (ret) {
-		LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+		LOG_ERR("lsm6dsv16bx_ah_qvar_mode_set (%i)", ret);
 		return ret;
 	}
 
@@ -308,25 +364,26 @@ int main(void)
 
 	LOG_INF("Xiao LSM6DSV16X Evaluation %s", APP_VERSION_STRING);
 
-	lsm6dsv16x_cb_t callbacks = {
-		.lsm6dsv16x_ts_sample_cb = ts_received_cb,
-		.lsm6dsv16x_acc_sample_cb = acc_received_cb,
-		.lsm6dsv16x_gyro_sample_cb = gyro_received_cb,
-		.lsm6dsv16x_gbias_sample_cb = gbias_received_cb,
-		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
-		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
-		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
-		.lsm6dsv16x_sigmot_cb = sig_mot_cb,
-		.lsm6dsv16x_fsm_cbs = {fsm_long_touch_cb, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	lsm6dsv16bx_cb_t callbacks = {
+		.lsm6dsv16bx_ts_sample_cb = ts_received_cb,
+		.lsm6dsv16bx_acc_sample_cb = acc_received_cb,
+		.lsm6dsv16bx_gyro_sample_cb = gyro_received_cb,
+		.lsm6dsv16bx_qvar_sample_cb = qvar_received_cb,
+		.lsm6dsv16bx_gbias_sample_cb = gbias_received_cb,
+		.lsm6dsv16bx_gravity_sample_cb = gravity_received_cb,
+		.lsm6dsv16bx_game_rot_sample_cb = game_rot_received_cb,
+		.lsm6dsv16bx_calibration_result_cb = calib_res_cb,
+		.lsm6dsv16bx_sigmot_cb = sig_mot_cb,
+		.lsm6dsv16bx_fsm_cbs = {fsm_long_touch_cb, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 	};
 
-	lsm6dsv16x_fsm_cfg_t fsm_cfg = {
+	lsm6dsv16bx_fsm_cfg_t fsm_cfg = {
 		.fsm_ucf_cfg = 		{fsm_long_touch, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 		.fsm_ucf_cfg_size =	{sizeof(fsm_long_touch), 0, 0, 0, 0, 0, 0, 0},
 		.fsm_pre_cfg_cbs = 	{fsm_long_touch_pre_cfg, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 	};
 
-	lsm6dsv16x_init(callbacks, fsm_cfg);
+	lsm6dsv16bx_init(callbacks, fsm_cfg);
 
 	emulator_cb_t emulator_callbacks = {
 		.emulator_ts_sample_cb = ts_received_cb,
@@ -360,7 +417,7 @@ int main(void)
 	} else {
 		// Calibration file has been read properly.
 		//LOG_DBG("x: %+3.2f - y: %+3.2f - z: %+3.2f", (double)x, (double)y, (double)z);
-		lsm6dsv16x_set_gbias(x, y, z);
+		lsm6dsv16bx_set_gbias(x, y, z);
 	}
 
 #endif
@@ -380,6 +437,10 @@ int main(void)
 	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 
 	state_machine_init(starting_state);
+
+#if defined(CONFIG_EDGE_IMPULSE)
+	impulse_init();
+#endif
 
 	return state_machine_run();
 }

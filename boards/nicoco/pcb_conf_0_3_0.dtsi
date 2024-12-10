@@ -6,40 +6,29 @@
 	gpin {
 		imu_int1: imu_int1 {
 			label = "IMU interrupt 1 pin";
-			gpios = <&xiao_d 1 GPIO_ACTIVE_HIGH>;
-		};
-
-		imu_int2: imu_int2 {
-			label = "IMU interrupt 2 pin";
-			gpios = <&xiao_d 0 GPIO_ACTIVE_HIGH>;
+			gpios = <&xiao_d 7 GPIO_ACTIVE_HIGH>;
 		};
 	};
 
     aliases {
         spi-flash0 = &w25q128;
-		imu = &lsm6dsv16x;
+		imu = &lsm6dsv16bx;
 		imuint1 = &imu_int1;
-		imuint2 = &imu_int2;
     };
 };
 
-&uicr {
-    nfct-pins-as-gpios;
-};
-
-&i2c1 {
-	compatible = "nordic,nrf-twi";
-	/* Cannot be used together with spi1. */
+&xiao_spi {
+	compatible = "nordic,nrf-spi";
 	status = "okay";
-	pinctrl-0 = <&i2c1_default>;
-	pinctrl-1 = <&i2c1_sleep>;
-	pinctrl-names = "default", "sleep";
-	clock-frequency = <I2C_BITRATE_FAST>;
-	lsm6dsv16x: lsm6dsv16x@6b {
-		status = "okay";
-		compatible = "zephyr,lsm6dsv16x";
-		reg = <0x6b>;
-	};
+	pinctrl-0 = <&spi2_default>;
+	pinctrl-1 = <&spi2_sleep>;
+	pinctrl-names = "default", "sleep";	cs-gpios = <&xiao_d 6 GPIO_ACTIVE_LOW>;
+	clock-frequency = <DT_FREQ_M(24)>;
+	lsm6dsv16bx: lsm6dsv16bx@0 {
+		compatible = "zephyr,lsm6dsv16bx";
+		spi-max-frequency = < DT_FREQ_M(10) >;
+		reg = <0>;
+    };
 };
 
 &qspi {
@@ -98,43 +87,45 @@
 		};
 	};
 
-    i2c1_default: i2c1_default {
+	spi2_default: spi2_default {
 		group1 {
-			psels = <NRF_PSEL(TWIM_SDA, 0, 4)>,
-				<NRF_PSEL(TWIM_SCL, 0, 5)>;
+			psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
+				<NRF_PSEL(SPIM_MOSI, 1, 15)>,
+				<NRF_PSEL(SPIM_MISO, 1, 14)>;
 		};
 	};
 
-	i2c1_sleep: i2c1_sleep {
+	spi2_sleep: spi2_sleep {
 		group1 {
-			psels = <NRF_PSEL(TWIM_SDA, 0, 4)>,
-				<NRF_PSEL(TWIM_SCL, 0, 5)>;
+			psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
+				<NRF_PSEL(SPIM_MOSI, 1, 15)>,
+				<NRF_PSEL(SPIM_MISO, 1, 14)>;
 			low-power-enable;
 		};
 	};
 
     qspi_default: qspi_default {
 		group1 {
-			psels = <NRF_PSEL(QSPI_SCK, 1, 13)>,
-				<NRF_PSEL(QSPI_IO0, 0, 28)>,
-				<NRF_PSEL(QSPI_IO1, 0, 29)>,
-				<NRF_PSEL(QSPI_IO2, 1, 14)>,
-				<NRF_PSEL(QSPI_IO3, 1, 12)>,
-				<NRF_PSEL(QSPI_CSN, 1, 15)>;
+			psels = <NRF_PSEL(QSPI_SCK, 0, 5)>,
+				<NRF_PSEL(QSPI_IO0, 0, 2)>,
+				<NRF_PSEL(QSPI_IO1, 0, 3)>,
+				<NRF_PSEL(QSPI_IO2, 0, 28)>,
+				<NRF_PSEL(QSPI_IO3, 0, 29)>,
+				<NRF_PSEL(QSPI_CSN, 0, 4)>;
 		};
 	};
 
 	qspi_sleep: qspi_sleep {
 		group1 {
-			psels = <NRF_PSEL(QSPI_SCK, 1, 13)>,
-				<NRF_PSEL(QSPI_IO0, 0, 28)>,
-				<NRF_PSEL(QSPI_IO1, 0, 29)>,
-				<NRF_PSEL(QSPI_IO2, 1, 14)>,
-				<NRF_PSEL(QSPI_IO3, 1, 12)>;
+			psels = <NRF_PSEL(QSPI_SCK, 0, 5)>,
+					<NRF_PSEL(QSPI_IO0, 0, 2)>,
+					<NRF_PSEL(QSPI_IO1, 0, 3)>,
+					<NRF_PSEL(QSPI_IO2, 0, 28)>,
+					<NRF_PSEL(QSPI_IO3, 0, 29)>;
 			low-power-enable;
 		};
 		group2 {
-			psels = <NRF_PSEL(QSPI_CSN, 1, 15)>;
+			psels = <NRF_PSEL(QSPI_CSN, 0, 4)>;
 			low-power-enable;
 			bias-pull-up;
 		};
