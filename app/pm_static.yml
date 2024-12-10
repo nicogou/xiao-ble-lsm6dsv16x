@@ -1,3 +1,18 @@
+# Workaround for the fact that partition manager does not use devicetree partition.
+# We need to leave room for the Adafruit UF2 bootloader and the Softdevice.
+# See: https://devzone.nordicsemi.com/f/nordic-q-a/116904/partitions-for-custom-boards-with-sdk-2-8-0-and-sysbuild
+softdevice_partition:
+  address: 0x0
+  size: 0x27000
+
+storage_partition:
+  address: 0xec000
+  size: 0x8000
+
+uf2_bl_partition:
+  address: 0xf4000
+  size: 0xc000
+
 data_partition:
   affiliation: disk
   extra_params: {
