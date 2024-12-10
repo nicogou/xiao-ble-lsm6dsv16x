@@ -130,18 +130,28 @@ static void recording_entry(void *o)
 			LOG_ERR("Unable to create session (%i)", res);
 		}
 
+        res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE));
+        if (res != 0){
+            LOG_ERR("Failed to write session header to session file (simple)");
+        }
 		if (recording_state.sflp_enabled || recording_state.data_forwarder_enabled)
 		{
 			res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SFLP, strlen(SESSION_FILE_HEADER_SFLP));
 			if (res != 0){
-				LOG_ERR("Failed to write session header to session file");
-			}
-		} else {
-			res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE));
-			if (res != 0){
-				LOG_ERR("Failed to write session header to session file");
+				LOG_ERR("Failed to write session header to session file (SFLP)");
 			}
 		}
+        if (recording_state.qvar_enabled || recording_state.data_forwarder_enabled)
+		{
+			res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_QVAR, strlen(SESSION_FILE_HEADER_QVAR));
+			if (res != 0){
+				LOG_ERR("Failed to write session header to session file (QVar)");
+			}
+		}
+        res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_NEWLINE, strlen(SESSION_FILE_HEADER_NEWLINE));
+        if (res != 0){
+            LOG_ERR("Failed to write session header to session file (Newline)");
+        }
 
 	    lsm6dsv16bx_start_acquisition(false, recording_state.sflp_enabled, recording_state.qvar_enabled);
 	}

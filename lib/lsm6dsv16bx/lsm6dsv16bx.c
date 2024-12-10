@@ -240,7 +240,7 @@ int lsm6dsv16bx_reset()
 		.sigmot_enabled = false,
 		.fsm_enabled = false,
 		.calib = LSM6DSV16BX_CALIBRATION_NOT_CALIBRATING,
-		.int2_on_int1 = true,
+		.int2_on_int1 = false,
 	};
 	memcpy(&sensor.state, &tmp_state, sizeof(tmp_state));
 
@@ -336,22 +336,6 @@ void lsm6dsv16bx_set_gbias(float x, float y, float z)
 void lsm6dsv16bx_int2_irq(struct k_work *item)
 {
 	bool handled = false;
-
-	if (sensor.state.qvar_enabled)
-	{
-		handled = true;
-
-		lsm6dsv16bx_all_sources_t all_sources;
-		int16_t data;
-
-		/* Read output only if new values are available */
-		lsm6dsv16bx_all_sources_get(&sensor.dev_ctx, &all_sources);
-		if (all_sources.drdy_ah_qvar) {
-			lsm6dsv16bx_ah_qvar_raw_get(&sensor.dev_ctx, &data);
-
-			LOG_DBG("QVAR [mV]:%6.2f", (double)lsm6dsv16bx_from_lsb_to_mv(data));
-		}
-	}
 
 	if (sensor.state.sigmot_enabled)
 	{
@@ -505,7 +489,11 @@ static void _data_handler_recording(lsm6dsv16bx_fifo_out_raw_t* f_data)
 			break;
 
 		case LSM6DSV16BX_AH_QVAR:
-			LOG_WRN("QVar data received.");
+			if (sensor.callbacks.lsm6dsv16bx_qvar_sample_cb) {
+				(*sensor.callbacks.lsm6dsv16bx_qvar_sample_cb)(lsm6dsv16bx_from_lsb_to_mv(*datax));
+			} else {
+				LOG_ERR("No QVar callback defined!");
+			}
 			break;
 
 		default:
@@ -780,6 +768,11 @@ void lsm6dsv16bx_init(lsm6dsv16bx_cb_t cb, lsm6dsv16bx_fsm_cfg_t fsm_cfg)
 		LOG_ERR("No Gyrometer callback defined!");
 	}
 
+	if (!sensor.callbacks.lsm6dsv16bx_qvar_sample_cb)
+	{
+		LOG_ERR("No QVar callback defined!");
+	}
+
 	if (!sensor.callbacks.lsm6dsv16bx_gbias_sample_cb)
 	{
 		LOG_ERR("No Gyroscope Bias callback defined!");
@@ -865,7 +858,7 @@ void lsm6dsv16bx_init(lsm6dsv16bx_cb_t cb, lsm6dsv16bx_fsm_cfg_t fsm_cfg)
 		.sigmot_enabled = false,
 		.fsm_enabled = false,
 		.calib = LSM6DSV16BX_CALIBRATION_NOT_CALIBRATING,
-		.int2_on_int1 = true,
+		.int2_on_int1 = false,
 	};
 	memcpy(&sensor.state, &tmp_state, sizeof(tmp_state));
 }

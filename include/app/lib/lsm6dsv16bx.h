@@ -47,6 +47,7 @@ typedef struct {
 	void (*lsm6dsv16bx_ts_sample_cb)(float_t);
 	void (*lsm6dsv16bx_acc_sample_cb)(float_t, float_t, float_t);
 	void (*lsm6dsv16bx_gyro_sample_cb)(float_t, float_t, float_t);
+	void (*lsm6dsv16bx_qvar_sample_cb)(float_t);
 	void (*lsm6dsv16bx_gbias_sample_cb)(float_t, float_t, float_t);
 	void (*lsm6dsv16bx_game_rot_sample_cb)(float_t, float_t, float_t, float_t);
 	void (*lsm6dsv16bx_gravity_sample_cb)(float_t, float_t, float_t);
