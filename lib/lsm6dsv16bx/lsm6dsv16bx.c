@@ -126,11 +126,11 @@ int lsm6dsv16bx_start_acquisition(bool enable_gbias, bool enable_sflp, bool enab
 	}
 
 	/* Set FIFO batch XL/Gyro ODR to 60Hz */
-	ret = lsm6dsv16bx_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16BX_XL_BATCHED_AT_60Hz);
+	ret = lsm6dsv16bx_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16BX_XL_BATCHED_AT_120Hz);
 	if (ret) {
 		LOG_ERR("lsm6dsv16bx_fifo_xl_batch_set (%i)", ret);
 	}
-	ret = lsm6dsv16bx_fifo_gy_batch_set(&sensor.dev_ctx, LSM6DSV16BX_GY_BATCHED_AT_60Hz);
+	ret = lsm6dsv16bx_fifo_gy_batch_set(&sensor.dev_ctx, LSM6DSV16BX_GY_BATCHED_AT_120Hz);
 	if (ret) {
 		LOG_ERR("lsm6dsv16bx_fifo_gy_batch_set (%i)", ret);
 	}
@@ -155,7 +155,7 @@ int lsm6dsv16bx_start_acquisition(bool enable_gbias, bool enable_sflp, bool enab
 	if (ret) {
 		LOG_ERR("lsm6dsv16bx_gy_data_rate_set (%i)", ret);
 	}
-	ret = lsm6dsv16bx_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16BX_SFLP_60Hz);
+	ret = lsm6dsv16bx_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16BX_SFLP_120Hz);
 	if (ret) {
 		LOG_ERR("lsm6dsv16bx_sflp_data_rate_set (%i)", ret);
 	}
