@@ -5,8 +5,8 @@
 / {
 	chosen {
 		zephyr,console = &usb_cdc_acm_uart;
-		zephyr,shell-uart = &uart0;
-		zephyr,log-uart = &log_uarts;
+		zephyr,shell-uart = &usb_cdc_acm_uart;
+		zephyr,log-uart = &usb_cdc_acm_uart;
 		zephyr,uart-mcumgr = &usb_cdc_acm_uart;
 		zephyr,bt-mon-uart = &usb_cdc_acm_uart;
 		zephyr,bt-c2h-uart = &usb_cdc_acm_uart;

@@ -14,8 +14,8 @@
 
 #include <app_version.h>
 
-#include <app/lib/lsm6dsv16x.h>
-#include <app/lib/lsm6dsv16x_fsm_config.h> // Include FSM configuration files
+#include <app/lib/lsm6dsv16bx.h>
+#include <app/lib/lsm6dsv16bx_fsm_config.h> // Include FSM configuration files
 #include <app/lib/xiao_smp_bluetooth.h>
 #include <app/lib/xiao_ble_shell.h>
 
@@ -243,7 +243,7 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 			}
 		}
 
-		lsm6dsv16x_set_gbias(x, y, z);
+		lsm6dsv16bx_set_gbias(x, y, z);
 
 	} else {
 		LOG_ERR("Calibration timeout!");
@@ -260,13 +260,13 @@ static void sig_mot_cb()
 
 static int fsm_long_touch_pre_cfg(stmdev_ctx_t ctx)
 {
-	lsm6dsv16x_ah_qvar_mode_t qvar_mode;
+	lsm6dsv16bx_ah_qvar_mode_t qvar_mode;
 
 	/* Enable QVar now because it is not enabled by Unico configuration */
-	qvar_mode.ah_qvar_en = 1;
-	int ret = lsm6dsv16x_ah_qvar_mode_set(&ctx, qvar_mode);
+	qvar_mode.ah_qvar1_en = 1;
+	int ret = lsm6dsv16bx_ah_qvar_mode_set(&ctx, qvar_mode);
 	if (ret) {
-		LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+		LOG_ERR("lsm6dsv16bx_ah_qvar_mode_set (%i)", ret);
 		return ret;
 	}
 
@@ -310,25 +310,25 @@ int main(void)
 
 	LOG_INF("Xiao LSM6DSV16X Evaluation %s", APP_VERSION_STRING);
 
-	lsm6dsv16x_cb_t callbacks = {
-		.lsm6dsv16x_ts_sample_cb = ts_received_cb,
-		.lsm6dsv16x_acc_sample_cb = acc_received_cb,
-		.lsm6dsv16x_gyro_sample_cb = gyro_received_cb,
-		.lsm6dsv16x_gbias_sample_cb = gbias_received_cb,
-		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
-		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
-		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
-		.lsm6dsv16x_sigmot_cb = sig_mot_cb,
-		.lsm6dsv16x_fsm_cbs = {fsm_long_touch_cb, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	lsm6dsv16bx_cb_t callbacks = {
+		.lsm6dsv16bx_ts_sample_cb = ts_received_cb,
+		.lsm6dsv16bx_acc_sample_cb = acc_received_cb,
+		.lsm6dsv16bx_gyro_sample_cb = gyro_received_cb,
+		.lsm6dsv16bx_gbias_sample_cb = gbias_received_cb,
+		.lsm6dsv16bx_gravity_sample_cb = gravity_received_cb,
+		.lsm6dsv16bx_game_rot_sample_cb = game_rot_received_cb,
+		.lsm6dsv16bx_calibration_result_cb = calib_res_cb,
+		.lsm6dsv16bx_sigmot_cb = sig_mot_cb,
+		.lsm6dsv16bx_fsm_cbs = {fsm_long_touch_cb, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 	};
 
-	lsm6dsv16x_fsm_cfg_t fsm_cfg = {
+	lsm6dsv16bx_fsm_cfg_t fsm_cfg = {
 		.fsm_ucf_cfg = 		{fsm_long_touch, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 		.fsm_ucf_cfg_size =	{sizeof(fsm_long_touch), 0, 0, 0, 0, 0, 0, 0},
 		.fsm_pre_cfg_cbs = 	{fsm_long_touch_pre_cfg, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 	};
 
-	lsm6dsv16x_init(callbacks, fsm_cfg);
+	lsm6dsv16bx_init(callbacks, fsm_cfg);
 
 	emulator_cb_t emulator_callbacks = {
 		.emulator_ts_sample_cb = ts_received_cb,
@@ -362,7 +362,7 @@ int main(void)
 	} else {
 		// Calibration file has been read properly.
 		//LOG_DBG("x: %+3.2f - y: %+3.2f - z: %+3.2f", (double)x, (double)y, (double)z);
-		lsm6dsv16x_set_gbias(x, y, z);
+		lsm6dsv16bx_set_gbias(x, y, z);
 	}
 
 #endif

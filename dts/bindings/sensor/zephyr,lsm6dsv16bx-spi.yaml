@@ -1,0 +1,7 @@
+description: |
+    STMicroelectronics LSM6DSV16BX 6-axis IMU (Inertial Measurement Unit) sensor
+    accessed through SPI bus
+
+compatible: "zephyr,lsm6dsv16bx"
+
+include: ["spi-device.yaml"]
