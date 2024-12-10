@@ -39,6 +39,31 @@ config LSM6DSV16X_SAMPLES_TO_DISCARD
 	int "Nb of samples to discard at the start of a session"
 	default 5
 
+# Define 8 possible FSM algorithms using the template.
+alg-number = 1
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 2
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 3
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 4
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 5
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 6
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 7
+rsource "Kconfig.template.fsm_alg"
+
+alg-number = 8
+rsource "Kconfig.template.fsm_alg"
+
 endif # LSM6DSV16X
 
 module = LSM6DSV16X

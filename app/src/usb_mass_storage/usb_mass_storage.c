@@ -49,8 +49,8 @@ static int setup_flash(struct fs_mount_t *mnt)
 	unsigned int id;
 	const struct flash_area *pfa;
 
-	mnt->storage_dev = (void *)STORAGE_PARTITION_ID;
-	id = STORAGE_PARTITION_ID;
+	mnt->storage_dev = (void *)DATA_PARTITION_ID;
+	id = DATA_PARTITION_ID;
 
 	rc = flash_area_open(id, &pfa);
 
@@ -463,6 +463,8 @@ int usb_mass_storage_end_current_session(){
         LOG_ERR("Semaphore not available!");
 		return -EINPROGRESS;
     }
+
+#ifdef CONFIG_CHECK_SESSION_DATA_AFTER
 	char read[SESSION_WR_BUFFER_THRESHOLD];
 
 	k_msleep(1000);
@@ -480,6 +482,7 @@ int usb_mass_storage_end_current_session(){
 			}
 		}
 	} while (size_read == SESSION_WR_BUFFER_THRESHOLD);
+#endif
 
 	int res = fs_close(&current_session_file);
 	if (res != 0) {
@@ -493,44 +496,50 @@ int usb_mass_storage_end_current_session(){
 
 int usb_mass_storage_write_to_current_session(char* data, size_t len){
 	int res = 0;
-	char read[SESSION_WR_BUFFER_THRESHOLD];
-	memcpy(&session_wr_buffer[session_wr_buffer_len], data, len);
-	session_wr_buffer_len += len;
-	if (session_wr_buffer_len >= SESSION_WR_BUFFER_SIZE) {
-		LOG_ERR("Write buffer is full, resetting buffer");
+
+	if (session_wr_buffer_len + len >= SESSION_WR_BUFFER_SIZE)
+	{
+		LOG_ERR("Write buffer too small to fit incoming data! Resetting buffer.");
 		session_wr_buffer_len = 0;
 		return -E2BIG;
 	}
 
+	memcpy(&session_wr_buffer[session_wr_buffer_len], data, len);
+	session_wr_buffer_len += len;
+
 	if (session_wr_buffer_len >= SESSION_WR_BUFFER_THRESHOLD)
 	{
-		res = usb_mass_storage_write_to_file(session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD, &current_session_file, false);
+		res = usb_mass_storage_write_to_file(session_wr_buffer, session_wr_buffer_len, &current_session_file, false);
 		if (res < 0) {
 			LOG_ERR("Failed to write data to current session file (%i)", res);
 			return res;
 		}
 
-		res= fs_seek(&current_session_file, -SESSION_WR_BUFFER_THRESHOLD, FS_SEEK_END);
+#ifdef CONFIG_CHECK_SESSION_DATA_AFTER
+		char read[SESSION_WR_BUFFER_SIZE];
+
+		res= fs_seek(&current_session_file, -session_wr_buffer_len, FS_SEEK_END);
 		if (res) {
-			LOG_WRN("test");
+			LOG_WRN("Could not seek current session file -SESSION_WR_BUFFER_THRESHOLD from end of file (%i)", res);
 		}
-		int size_read = fs_read(&current_session_file, read, SESSION_WR_BUFFER_THRESHOLD);
-		if (strncmp(read, session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD) != 0){
+		int size_read = fs_read(&current_session_file, read, session_wr_buffer_len);
+		if (size_read < 0)
+		{
+			LOG_ERR("Error while reading from file");
+		}
+		if (strncmp(read, session_wr_buffer, size_read) != 0){
 			LOG_ERR("Corrupted data");
-			LOG_HEXDUMP_ERR(read, SESSION_WR_BUFFER_THRESHOLD, "read");
-			LOG_HEXDUMP_ERR(session_wr_buffer, SESSION_WR_BUFFER_THRESHOLD, "read");
+			LOG_HEXDUMP_ERR(read, size_read, "read");
+			LOG_HEXDUMP_ERR(session_wr_buffer, size_read, "session_wr_buffer");
 		}
 		res = fs_seek(&current_session_file, 0, FS_SEEK_END);
 		if (res) {
-			LOG_ERR("yoohoo");
+			LOG_ERR("Could not seek back to end of file (%i)", res);
 		}
+#endif
 
-		char tmp[SESSION_WR_BUFFER_SIZE];
-		size_t s = session_wr_buffer_len - SESSION_WR_BUFFER_THRESHOLD;
-		memcpy(tmp, &session_wr_buffer[SESSION_WR_BUFFER_THRESHOLD], s);
-		memcpy(session_wr_buffer, tmp, s);
-		memset(&session_wr_buffer[SESSION_WR_BUFFER_THRESHOLD], 0, s);
-		session_wr_buffer_len -= SESSION_WR_BUFFER_THRESHOLD;
+		// Resetting buffer after writing it to flash
+		session_wr_buffer_len = 0;
 	}
 
 	return res;

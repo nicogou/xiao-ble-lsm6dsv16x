@@ -15,12 +15,15 @@
 #include <app_version.h>
 
 #include <app/lib/lsm6dsv16x.h>
+#include <app/lib/lsm6dsv16x_fsm_config.h> // Include FSM configuration files
 #include <app/lib/xiao_smp_bluetooth.h>
 #include <app/lib/xiao_ble_shell.h>
 
 #if defined(CONFIG_EDGE_IMPULSE)
 #include <edge-impulse/impulse.h>
 #endif
+
+#include <ui/ui.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
@@ -142,10 +145,12 @@ static void print_line_if_needed(){
 			printk("%s", data_forwarded);
 		}
 
+#ifdef CONFIG_EDGE_IMPULSE
 		if (recording_state.edge_impulse_enabled)
 		{
 			impulse_add_data(ei_input_data, 3);
 		}
+#endif
 	}
 }
 
@@ -220,7 +225,7 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 		if (cnt != CALIBRATION_FILE_SIZE) {
 			LOG_ERR("Calibration file data is not the correct length! Expected %u, got %i", CALIBRATION_FILE_SIZE, cnt);
 		}
-		LOG_INF("Calibration succeeded. Gbias %s", txt);
+		LOG_INF("Calibration succeeded. Gbias: x:%+07.2f y:%+07.2f z:%+07.2f", (double)x, (double)y, (double)z);
 		int res = usb_mass_storage_create_file(NULL, CALIBRATION_FILE_NAME, usb_mass_storage_get_calibration_file_p(), true);
 		if (res != 0)
 		{
@@ -247,6 +252,52 @@ static void calib_res_cb(int result, float_t x, float_t y, float_t z)
 	state_machine_post_event(XIAO_EVENT_STOP_CALIBRATION);
 }
 
+static void sig_mot_cb()
+{
+	LOG_DBG("Significant Motion detected!");
+	state_machine_post_event(XIAO_EVENT_WAKE_UP);
+}
+
+static int fsm_long_touch_pre_cfg(stmdev_ctx_t ctx)
+{
+	lsm6dsv16x_ah_qvar_mode_t qvar_mode;
+
+	/* Enable QVar now because it is not enabled by Unico configuration */
+	qvar_mode.ah_qvar_en = 1;
+	int ret = lsm6dsv16x_ah_qvar_mode_set(&ctx, qvar_mode);
+	if (ret) {
+		LOG_ERR("lsm6dsv16x_ah_qvar_mode_set (%i)", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static void fsm_long_touch_cb(uint8_t state)
+{
+	LOG_WRN("FSM Long Touch callback called! State: %u", state);
+	if (state) {
+		state_machine_post_event(XIAO_EVENT_WAKE_UP);
+	}
+	return;
+}
+
+static void on_connection_success() {
+	LOG_DBG("Connected");
+	ui_rgb_t current_color = ui_get_rgb();
+	ui_set_rgb_on(/*Red*/0, /*Green*/0, /*Blue*/UI_COLOR_MAX, /*Blink (%)*/current_color.blink, /*Duration (s)*/current_color.duration);
+}
+
+static void on_connection_fail(uint8_t err) {
+	LOG_ERR("Connection failed (err 0x%02x)", err);
+}
+
+static void on_disconnection(uint8_t reason) {
+	LOG_INF("Disconnected (reason 0x%02x)", reason);
+	ui_rgb_t current_color = ui_get_rgb();
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ current_color.blink, /*Duration (s)*/ current_color.duration);
+}
+
 int main(void)
 {
 	int ret;
@@ -267,9 +318,17 @@ int main(void)
 		.lsm6dsv16x_gravity_sample_cb = gravity_received_cb,
 		.lsm6dsv16x_game_rot_sample_cb = game_rot_received_cb,
 		.lsm6dsv16x_calibration_result_cb = calib_res_cb,
+		.lsm6dsv16x_sigmot_cb = sig_mot_cb,
+		.lsm6dsv16x_fsm_cbs = {fsm_long_touch_cb, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 	};
 
-	lsm6dsv16x_init(callbacks);
+	lsm6dsv16x_fsm_cfg_t fsm_cfg = {
+		.fsm_ucf_cfg = 		{fsm_long_touch, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+		.fsm_ucf_cfg_size =	{sizeof(fsm_long_touch), 0, 0, 0, 0, 0, 0, 0},
+		.fsm_pre_cfg_cbs = 	{fsm_long_touch_pre_cfg, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+	};
+
+	lsm6dsv16x_init(callbacks, fsm_cfg);
 
 	emulator_cb_t emulator_callbacks = {
 		.emulator_ts_sample_cb = ts_received_cb,
@@ -308,7 +367,19 @@ int main(void)
 
 #endif
 
-	start_smp_bluetooth_adverts();
+	xiao_smp_bluetooth_cb_t smp_callbacks = {
+		.on_connection_success = on_connection_success,
+		.on_connection_fail = on_connection_fail,
+		.on_disconnection = on_disconnection,
+	};
+
+	smp_bluetooth_init(smp_callbacks);
+
+#ifdef CONFIG_EDGE_IMPULSE
+	impulse_init();
+#endif
+
+	ui_set_rgb_on(/*Red*/ 0, /*Green*/ UI_COLOR_MAX, /*Blue*/ 0, /*Blink (%)*/ 0, /*Duration (s)*/ 1);
 
 	state_machine_init(starting_state);
 

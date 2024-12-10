@@ -31,6 +31,7 @@ void WriteFileHeader(void *fp)
 
 	res = file_functions.fseek(fp, 0, 0); /*FS_SEEK_SET = 0*/
 	_ssize_t s = file_functions.fwrite(fp, (void *)&file_header, FIT_FILE_HDR_SIZE);
+	ARG_UNUSED(s);
 }
 
 void WriteData(const void *data, FIT_UINT16 data_size, void *fp)
@@ -38,6 +39,7 @@ void WriteData(const void *data, FIT_UINT16 data_size, void *fp)
 	FIT_UINT16 offset;
 
 	_ssize_t s = file_functions.fwrite(fp, data, data_size);
+	ARG_UNUSED(s);
 
 	for (offset = 0; offset < data_size; offset++)
 		data_crc = FitCRC_Get16(data_crc, *((FIT_UINT8 *)data + offset));
@@ -239,6 +241,7 @@ int fit_sdk_test(void* file_ptr, const char *file_name, uint8_t flags)
 
 	// Write CRC.
 	_ssize_t s = file_functions.fwrite(file_ptr, (void *)&data_crc, sizeof(FIT_UINT16));
+	ARG_UNUSED(s);
 
 	// Update file header with data size.
 	WriteFileHeader(file_ptr);

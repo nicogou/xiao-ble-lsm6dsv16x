@@ -55,7 +55,7 @@
 
 	msc_disk0 {
 		compatible = "zephyr,flash-disk";
-		partition = <&storage_partition>;
+		partition = <&data_partition>;
 		disk-name = "NAND";
 		cache-size = <4096>;
 	};
@@ -154,6 +154,18 @@
 		code_partition: partition@27000 {
 			label = "code_partition";
 			reg = <0x00027000 0x000c5000>;
+		};
+
+		/*
+		 * The flash starting at 0x000ec000 and ending at
+		 * 0x000f3fff is reserved for use by the application.
+		 *
+		 * Storage partition will be used by FCB/LittleFS/NVS
+		 * if enabled.
+		 */
+		storage_partition: partition@ec000 {
+			label = "storage";
+			reg = <0x000ec000 0x00008000>;
 		};
 
 		boot_partition: partition@f4000 {

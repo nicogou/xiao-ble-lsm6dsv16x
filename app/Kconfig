@@ -13,3 +13,15 @@ endmenu
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
+
+config IDLE_STATE_TIMEOUT
+	int "Time before SLEEP event in seconds."
+	default 60
+
+config CHECK_SESSION_DATA_DURING
+	bool "Check that session data is correctly written during recording"
+	default y
+
+config CHECK_SESSION_DATA_AFTER
+	bool "Check that session data is not corrupted at the end of a session"
+	default y

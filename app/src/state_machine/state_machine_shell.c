@@ -3,10 +3,27 @@
 #include <zephyr/shell/shell.h>
 #include <emulator/emulator.h>
 
+static void _if_off_then_wake_up(const struct shell *sh)
+{
+	bool send_msg = true;
+	while (state_machine_current_state() == OFF)
+	{
+		if (send_msg)
+		{
+			shell_warn(sh, "Device in OFF state, waking it up!");
+			state_machine_post_event(XIAO_EVENT_WAKE_UP);
+			send_msg = false;
+		}
+		k_msleep(100);
+	}
+}
+
 static int cmd_recording_start(const struct shell *sh, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
+
+	_if_off_then_wake_up(sh);
 
 	xiao_recording_state_t wanted_state = {.sflp_enabled = false, .data_forwarder_enabled = false, .edge_impulse_enabled = false, .qvar_enabled = false, .emulation_enabled = false,};
 	for (int ii = 1; ii < argc; ii++)
@@ -21,8 +38,12 @@ static int cmd_recording_start(const struct shell *sh, size_t argc, char **argv)
 			wanted_state.data_forwarder_enabled = true;
 		} else if (strcmp(argv[ii], EDGE_IMPULSE_STRING) == 0)
 		{
+#ifdef CONFIG_EDGE_IMPULSE
 			shell_print(sh, "Edge Impulse enabled");
 			wanted_state.edge_impulse_enabled = true;
+#else
+			shell_warn(sh, "Edge Impulse not enabled!");
+#endif
 		}else if (strcmp(argv[ii], QVAR_STRING) == 0)
 		{
 			shell_print(sh, "QVar enabled");
@@ -65,6 +86,8 @@ static int cmd_calibrating_start(const struct shell *sh, size_t argc, char **arg
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
+	_if_off_then_wake_up(sh);
+
 	state_machine_post_event(XIAO_EVENT_START_CALIBRATION);
 	shell_print(sh, "%s", "Calibration Start event posted");
 	return 0;
@@ -89,6 +112,11 @@ SHELL_CMD_REGISTER(cal, &sub_calibrating, "Calibrating commands", NULL);
 
 static int cmd_emulating_start(const struct shell *sh, size_t argc, char **argv)
 {
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	_if_off_then_wake_up(sh);
+
 	int res = emulator_set_session(argv[1]);
 	if (res) {
 		shell_error(sh, "%s", "Cannot set Emulator session");

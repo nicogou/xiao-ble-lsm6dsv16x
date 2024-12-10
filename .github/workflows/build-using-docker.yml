@@ -13,7 +13,7 @@ jobs:
         # It is a workaround for GitHub Actions limitation https://github.com/actions/runner/issues/1964
         shell: bash
     steps:
-      - name: Checkout repository with example application
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: xiao-ble-lsm6dsv16x.git
@@ -22,13 +22,14 @@ jobs:
         run: |
           west init -l xiao-ble-lsm6dsv16x.git
           west update -o=--depth=1 -n
+          pip install adafruit-nrfutil
 
       - name: Build firmware
         working-directory: xiao-ble-lsm6dsv16x.git
         env:
           EI_API_KEY: ${{ secrets.EI_API_KEY }}
         run: |
-          west build -b nicoco app -- -DEXTRA_CONF_FILE="debug.conf" -DEI_API_KEY_HEADER="x-api-key:$EI_API_KEY"
+          west build -b nicoco app -- -DEI_API_KEY_HEADER="x-api-key:$EI_API_KEY"
           west prepare-dfu
 
       - name: Store hex files
