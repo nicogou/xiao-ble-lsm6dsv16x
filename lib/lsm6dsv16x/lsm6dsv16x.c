@@ -32,6 +32,7 @@ void imu_int_1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
     return;
 }
 
+#if DT_NODE_EXISTS(imu_int2)
 static struct k_work imu_int2_work;
 
 // Interrupt 2 init
@@ -45,6 +46,7 @@ void imu_int_2_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
 	k_work_submit(&imu_int2_work);
     return;
 }
+#endif
 
 static void _calibration_timer_cb(struct k_timer *dummy);
 K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
@@ -824,13 +826,16 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 		LOG_ERR("Error while attaching interrupt 1 %i", res);
 	}
 
+	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
+
+#if DT_NODE_EXISTS(imu_int2)
 	res = attach_interrupt(imu_int_2, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_2_cb_data, imu_int_2_cb);
 	if (res != 0) {
 		LOG_ERR("Error while attaching interrupt 2 %i", res);
 	}
 
-	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
 	k_work_init(&imu_int2_work, lsm6dsv16x_int2_irq);
+#endif
 
 	lsm6dsv16x_reset_t rst;
 
