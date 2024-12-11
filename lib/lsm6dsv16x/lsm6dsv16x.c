@@ -128,7 +128,7 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 
 	uint8_t xl_sampling_frequency = LSM6DSV16X_XL_BATCHED_AT_60Hz;
 	uint8_t g_sampling_frequency = LSM6DSV16X_GY_BATCHED_AT_60Hz;
-	if (!enable_sflp)
+	if (!enable_sflp && !enable_gbias)
 	{
 		xl_sampling_frequency = LSM6DSV16X_XL_BATCHED_AT_120Hz;
 		g_sampling_frequency = LSM6DSV16X_GY_BATCHED_AT_120Hz;

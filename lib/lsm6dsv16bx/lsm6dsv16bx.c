@@ -125,12 +125,20 @@ int lsm6dsv16bx_start_acquisition(bool enable_gbias, bool enable_sflp, bool enab
 		LOG_ERR("lsm6dsv16bx_fifo_sflp_batch_set (%i)", ret);
 	}
 
-	/* Set FIFO batch XL/Gyro ODR to 60Hz */
-	ret = lsm6dsv16bx_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16BX_XL_BATCHED_AT_120Hz);
+	uint8_t xl_sampling_frequency = LSM6DSV16BX_XL_BATCHED_AT_120Hz;
+	uint8_t g_sampling_frequency = LSM6DSV16BX_XL_BATCHED_AT_120Hz;
+	uint8_t sflp_sampling_frequency = LSM6DSV16BX_SFLP_120Hz;
+	if (!enable_sflp && !enable_gbias)
+	{
+		xl_sampling_frequency = LSM6DSV16BX_XL_BATCHED_AT_240Hz;
+		g_sampling_frequency = LSM6DSV16BX_XL_BATCHED_AT_240Hz;
+	}
+	/* Set FIFO batch XL/Gyro ODR to specified frequency */
+	ret = lsm6dsv16bx_fifo_xl_batch_set(&sensor.dev_ctx, xl_sampling_frequency);
 	if (ret) {
 		LOG_ERR("lsm6dsv16bx_fifo_xl_batch_set (%i)", ret);
 	}
-	ret = lsm6dsv16bx_fifo_gy_batch_set(&sensor.dev_ctx, LSM6DSV16BX_GY_BATCHED_AT_120Hz);
+	ret = lsm6dsv16bx_fifo_gy_batch_set(&sensor.dev_ctx, g_sampling_frequency);
 	if (ret) {
 		LOG_ERR("lsm6dsv16bx_fifo_gy_batch_set (%i)", ret);
 	}
@@ -155,9 +163,12 @@ int lsm6dsv16bx_start_acquisition(bool enable_gbias, bool enable_sflp, bool enab
 	if (ret) {
 		LOG_ERR("lsm6dsv16bx_gy_data_rate_set (%i)", ret);
 	}
-	ret = lsm6dsv16bx_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16BX_SFLP_120Hz);
-	if (ret) {
-		LOG_ERR("lsm6dsv16bx_sflp_data_rate_set (%i)", ret);
+	if (enable_sflp || enable_gbias)
+	{
+		ret = lsm6dsv16bx_sflp_data_rate_set(&sensor.dev_ctx, sflp_sampling_frequency);
+		if (ret) {
+			LOG_ERR("lsm6dsv16bx_sflp_data_rate_set (%i)", ret);
+		}
 	}
 	ret = lsm6dsv16bx_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16BX_TMSTMP_DEC_1);
 	if (ret) {
