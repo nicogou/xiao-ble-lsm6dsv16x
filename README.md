@@ -13,11 +13,11 @@ The end goal of the device is to be able to detect, analyze and provide numerica
 ## Hardware overview
 
 The device is based around:
-- the Xiao BLE Sense from Seeed Studio, a nRF52840-based development board containing a 2MB QSPI Flash, a microphone and a basic IMU.
+- the [XIAO nRF52840 Sense aka XIAO BLE Sense from Seeed Studio](https://www.seeedstudio.com/Seeed-XIAO-BLE-Sense-nRF52840-p-5253.html), a nRF52840-based development board containing a 2MB QSPI Flash, a microphone and a basic IMU.
 - the LSM6DSV16X IMU from STMicroelectronics, a smart IMU with an embedded Qvar (electrostatic charge) sensor, able to perform sensor fusion and edge computing.
 - the W25Q128, a 16 Mbytes external flash, to store IMU data.
 
-Early firmware development and product evaluation was done using breakout boards. A custom PCB has been developped using [Flux.ai](https://www.flux.ai/nicolasgoualard/lsm6dsv16xeval).
+Early firmware development and product evaluation was done using breakout boards. A custom PCB has been developed using [Flux.ai](https://www.flux.ai/nicolasgoualard/lsm6dsv16xeval).
 
 ### Bootloader
 
