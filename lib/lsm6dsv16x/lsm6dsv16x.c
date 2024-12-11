@@ -32,6 +32,7 @@ void imu_int_1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
     return;
 }
 
+#if DT_NODE_EXISTS(imu_int2)
 static struct k_work imu_int2_work;
 
 // Interrupt 2 init
@@ -45,6 +46,7 @@ void imu_int_2_cb(const struct device *dev, struct gpio_callback *cb, uint32_t p
 	k_work_submit(&imu_int2_work);
     return;
 }
+#endif
 
 static void _calibration_timer_cb(struct k_timer *dummy);
 K_TIMER_DEFINE(calibration_timer, _calibration_timer_cb, NULL);
@@ -124,12 +126,20 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 		LOG_ERR("lsm6dsv16x_fifo_sflp_batch_set (%i)", ret);
 	}
 
+	uint8_t xl_sampling_frequency = LSM6DSV16X_XL_BATCHED_AT_60Hz;
+	uint8_t g_sampling_frequency = LSM6DSV16X_GY_BATCHED_AT_60Hz;
+	if (!enable_sflp && !enable_gbias)
+	{
+		xl_sampling_frequency = LSM6DSV16X_XL_BATCHED_AT_120Hz;
+		g_sampling_frequency = LSM6DSV16X_GY_BATCHED_AT_120Hz;
+	}
+
 	/* Set FIFO batch XL/Gyro ODR to 60Hz */
-	ret = lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, LSM6DSV16X_XL_BATCHED_AT_60Hz);
+	ret = lsm6dsv16x_fifo_xl_batch_set(&sensor.dev_ctx, xl_sampling_frequency);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_xl_batch_set (%i)", ret);
 	}
-	ret = lsm6dsv16x_fifo_gy_batch_set(&sensor.dev_ctx, LSM6DSV16X_GY_BATCHED_AT_60Hz);
+	ret = lsm6dsv16x_fifo_gy_batch_set(&sensor.dev_ctx, g_sampling_frequency);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_gy_batch_set (%i)", ret);
 	}
@@ -154,10 +164,14 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_gy_data_rate_set (%i)", ret);
 	}
-	ret = lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_sflp_data_rate_set (%i)", ret);
+	if (enable_sflp || enable_gbias)
+	{
+		ret = lsm6dsv16x_sflp_data_rate_set(&sensor.dev_ctx, LSM6DSV16X_SFLP_60Hz);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_sflp_data_rate_set (%i)", ret);
+		}
 	}
+
 	ret = lsm6dsv16x_fifo_timestamp_batch_set(&sensor.dev_ctx, LSM6DSV16X_TMSTMP_DEC_1);
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_fifo_timestamp_batch_set (%i)", ret);
@@ -166,14 +180,21 @@ int lsm6dsv16x_start_acquisition(bool enable_gbias, bool enable_sflp, bool enabl
 	if (ret) {
 		LOG_ERR("lsm6dsv16x_timestamp_set (%i)", ret);
 	}
-	ret = lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_sflp_game_rotation_set (%i)", ret);
+
+	if (enable_sflp)
+	{
+		ret = lsm6dsv16x_sflp_game_rotation_set(&sensor.dev_ctx, PROPERTY_ENABLE);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_sflp_game_rotation_set (%i)", ret);
+		}
 	}
 
-	ret = lsm6dsv16x_sflp_game_gbias_set(&sensor.dev_ctx, &gbias);
-	if (ret) {
-		LOG_ERR("lsm6dsv16x_sflp_game_gbias_set (%i)", ret);
+	if (enable_gbias)
+	{
+		ret = lsm6dsv16x_sflp_game_gbias_set(&sensor.dev_ctx, &gbias);
+		if (ret) {
+			LOG_ERR("lsm6dsv16x_sflp_game_gbias_set (%i)", ret);
+		}
 	}
 
 	sensor.state.xl_enabled = true;
@@ -824,13 +845,16 @@ void lsm6dsv16x_init(lsm6dsv16x_cb_t cb, lsm6dsv16x_fsm_cfg_t fsm_cfg)
 		LOG_ERR("Error while attaching interrupt 1 %i", res);
 	}
 
+	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
+
+#if DT_NODE_EXISTS(imu_int2)
 	res = attach_interrupt(imu_int_2, GPIO_INPUT, GPIO_INT_EDGE_TO_ACTIVE, &imu_int_2_cb_data, imu_int_2_cb);
 	if (res != 0) {
 		LOG_ERR("Error while attaching interrupt 2 %i", res);
 	}
 
-	k_work_init(&imu_int1_work, lsm6dsv16x_int1_irq);
 	k_work_init(&imu_int2_work, lsm6dsv16x_int2_irq);
+#endif
 
 	lsm6dsv16x_reset_t rst;
 

@@ -2,11 +2,12 @@ board:
   name: nicoco
   revision:
     format: major.minor.patch
-    default: 0.2.0
+    default: 0.3.0
     exact: true
     revisions:
     - name: 0.1.0
     - name: 0.2.0
+    - name: 0.3.0
   socs:
   - name: nrf52840
     variants:

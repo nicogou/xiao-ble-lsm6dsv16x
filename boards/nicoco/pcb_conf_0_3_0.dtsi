@@ -1,0 +1,133 @@
+/ {
+	chosen {
+        nordic,pm-ext-flash = &w25q128;
+    };
+
+	gpin {
+		imu_int1: imu_int1 {
+			label = "IMU interrupt 1 pin";
+			gpios = <&xiao_d 7 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+    aliases {
+        spi-flash0 = &w25q128;
+		imu = &lsm6dsv16bx;
+		imuint1 = &imu_int1;
+    };
+};
+
+&spi3 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	pinctrl-0 = <&spi3_default>;
+	pinctrl-1 = <&spi3_sleep>;
+	pinctrl-names = "default", "sleep";	cs-gpios = <&xiao_d 6 GPIO_ACTIVE_LOW>;
+	clock-frequency = <DT_FREQ_M(32)>;
+	lsm6dsv16bx: lsm6dsv16bx@0 {
+		compatible = "zephyr,lsm6dsv16bx";
+		spi-max-frequency = < DT_FREQ_M(32) >;
+		reg = <0>;
+    };
+};
+
+&qspi {
+	status = "okay";
+	pinctrl-0 = <&qspi_default>;
+	pinctrl-1 = <&qspi_sleep>;
+	pinctrl-names = "default", "sleep";
+	w25q128: w25q128@0 {
+		compatible = "nordic,qspi-nor";
+		reg = <0>;
+		sck-frequency = <DT_FREQ_M(32)>; /* Use only 16MHz. The max frequency of 104MHz corrupts the data when reading/writing. */
+		quad-enable-requirements = "S2B1v1";
+		jedec-id = [ef 40 18];
+		/*
+		Refer to the Winbond application note for SFDP Definition table for the correct parameters.
+		sfdp-bfp = [
+			e5 20 f1 ff  ff ff ff 00  44 eb 08 6b  08 3b 80 bb
+			ee ff ff ff  ff ff 00 ff  ff ff 00 ff  0c 20 0f 52
+			10 d8 08 81
+		];
+		 */
+		size = <0x8000000>;
+		has-dpd;
+		t-enter-dpd = <3000>;
+		t-exit-dpd = <3000>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			data_partition: partition@0 {
+				label = "data";
+				reg = <0x00000000 0x01000000>;
+			};
+		};
+	};
+};
+
+&pinctrl {
+    uart0_default: uart0_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 9)>;
+		};
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 0, 10)>;
+			bias-pull-up;
+		};
+	};
+
+	uart0_sleep: uart0_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 9)>,
+				<NRF_PSEL(UART_RX, 0, 10)>;
+			low-power-enable;
+		};
+	};
+
+	spi3_default: spi3_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
+				<NRF_PSEL(SPIM_MOSI, 1, 15)>,
+				<NRF_PSEL(SPIM_MISO, 1, 14)>;
+		};
+	};
+
+	spi3_sleep: spi3_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
+				<NRF_PSEL(SPIM_MOSI, 1, 15)>,
+				<NRF_PSEL(SPIM_MISO, 1, 14)>;
+			low-power-enable;
+		};
+	};
+
+    qspi_default: qspi_default {
+		group1 {
+			psels = <NRF_PSEL(QSPI_SCK, 0, 5)>,
+				<NRF_PSEL(QSPI_IO0, 0, 2)>,
+				<NRF_PSEL(QSPI_IO1, 0, 3)>,
+				<NRF_PSEL(QSPI_IO2, 0, 28)>,
+				<NRF_PSEL(QSPI_IO3, 0, 29)>,
+				<NRF_PSEL(QSPI_CSN, 0, 4)>;
+		};
+	};
+
+	qspi_sleep: qspi_sleep {
+		group1 {
+			psels = <NRF_PSEL(QSPI_SCK, 0, 5)>,
+					<NRF_PSEL(QSPI_IO0, 0, 2)>,
+					<NRF_PSEL(QSPI_IO1, 0, 3)>,
+					<NRF_PSEL(QSPI_IO2, 0, 28)>,
+					<NRF_PSEL(QSPI_IO3, 0, 29)>;
+			low-power-enable;
+		};
+		group2 {
+			psels = <NRF_PSEL(QSPI_CSN, 0, 4)>;
+			low-power-enable;
+			bias-pull-up;
+		};
+	};
+};

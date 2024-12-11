@@ -2,7 +2,7 @@
 #include <zephyr/smf.h>
 #include <zephyr/logging/log.h>
 
-#include <app/lib/lsm6dsv16x.h>
+#include <app/lib/lsm6dsv16bx.h>
 #include <app/lib/xiao_smp_bluetooth.h>
 #include <usb_mass_storage/usb_mass_storage.h>
 #include <edge-impulse/impulse.h>
@@ -55,11 +55,9 @@ static void off_entry(void *o)
      *  so FSM needs to be configured before Significant Motion detection.
      */
     uint8_t fsm_algs_to_start[1] = {0};
-	lsm6dsv16x_start_fsm(fsm_algs_to_start, 1);
+	lsm6dsv16bx_start_fsm(fsm_algs_to_start, 1);
 
-	lsm6dsv16x_start_significant_motion_detection();
-
-    lsm6dsv16x_int2_to_int1(true);
+	lsm6dsv16bx_start_significant_motion_detection();
 }
 
 static void off_run(void *o)
@@ -76,7 +74,7 @@ static void off_run(void *o)
 
 static void off_exit(void *o)
 {
-	lsm6dsv16x_reset();
+	lsm6dsv16bx_reset();
 }
 
 /* State IDLE */
@@ -132,20 +130,30 @@ static void recording_entry(void *o)
 			LOG_ERR("Unable to create session (%i)", res);
 		}
 
+        res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE));
+        if (res != 0){
+            LOG_ERR("Failed to write session header to session file (simple)");
+        }
 		if (recording_state.sflp_enabled || recording_state.data_forwarder_enabled)
 		{
 			res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SFLP, strlen(SESSION_FILE_HEADER_SFLP));
 			if (res != 0){
-				LOG_ERR("Failed to write session header to session file");
-			}
-		} else {
-			res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_SIMPLE, strlen(SESSION_FILE_HEADER_SIMPLE));
-			if (res != 0){
-				LOG_ERR("Failed to write session header to session file");
+				LOG_ERR("Failed to write session header to session file (SFLP)");
 			}
 		}
+        if (recording_state.qvar_enabled || recording_state.data_forwarder_enabled)
+		{
+			res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_QVAR, strlen(SESSION_FILE_HEADER_QVAR));
+			if (res != 0){
+				LOG_ERR("Failed to write session header to session file (QVar)");
+			}
+		}
+        res = usb_mass_storage_write_to_current_session(SESSION_FILE_HEADER_NEWLINE, strlen(SESSION_FILE_HEADER_NEWLINE));
+        if (res != 0){
+            LOG_ERR("Failed to write session header to session file (Newline)");
+        }
 
-	    lsm6dsv16x_start_acquisition(false, recording_state.sflp_enabled, recording_state.qvar_enabled);
+	    lsm6dsv16bx_start_acquisition(false, recording_state.sflp_enabled, recording_state.qvar_enabled);
 	}
 
 #ifdef CONFIG_EDGE_IMPULSE
@@ -184,7 +192,7 @@ static void recording_exit(void *o)
 	{
 		emulator_session_stop();
 	} else {
-		lsm6dsv16x_reset();
+		lsm6dsv16bx_reset();
 		int res = usb_mass_storage_end_current_session();
 		if (res) {
 			LOG_ERR("Unable to end session (%i)", res);
@@ -200,7 +208,7 @@ static void calibrating_entry(void *o)
 {
     LOG_INF("Entering CALIBRATING state.");
     current_state = CALIBRATING;
-	lsm6dsv16x_start_calibration();
+	lsm6dsv16bx_start_calibration();
 }
 
 static void calibrating_run(void *o)
@@ -217,7 +225,7 @@ static void calibrating_run(void *o)
 
 static void calibrating_exit(void *o)
 {
-	lsm6dsv16x_reset();
+	lsm6dsv16bx_reset();
 }
 
 xiao_state_t state_machine_current_state(void) {
